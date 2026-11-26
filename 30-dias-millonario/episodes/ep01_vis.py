@@ -28,43 +28,155 @@ def shots(t, keys, tr=0.55):
 def flash(c, a, color="#ffffff"):
     if a > 0.002: c.drawRect(skia.Rect.MakeWH(W, H), P(hexc(color, a)))
 
-# ------------------------------------------------------------------ 1. HOOK
+# ------------------------------------------------------------------ 0. FLASH-FORWARD (día 30)
+CONF = [dict(x=random.Random(i).uniform(-1, 1), y=random.Random(i + 99).uniform(-1, 1),
+             c=random.Random(i + 7).choice(["#ffd400", "#ff4fa0", "#2fd0ff", "#7cff6b", "#ffffff"]),
+             s=random.Random(i + 3).uniform(.6, 1.4)) for i in range(90)]
+
+def confetti(c, lt, cx=W / 2, cy=900, power=1500):
+    for i, q in enumerate(CONF):
+        x = cx + q["x"] * power * out_cubic(min(1, lt * 1.6)) + math.sin(lt * 3 + i) * 30
+        y = cy + q["y"] * power * .6 * out_cubic(min(1, lt * 1.6)) + 600 * lt * lt
+        c.save(); c.translate(x, y); c.rotate(lt * 400 * q["s"] + i * 37)
+        c.scale(1, abs(math.cos(lt * 6 + i)))
+        rect(c, -9 * q["s"], -5 * q["s"], 18 * q["s"], 10 * q["s"], P(hexc(q["c"])))
+        c.restore()
+
+def s_flash(c, x):
+    t, d = x.t, x.d
+    l0 = x.l(0)
+    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=rad(W / 2, 800, 1400, [hexc("#ffe27a"), hexc("#ff9a1f"), hexc("#7a2a00")], [0, .45, 1])))
+    rays(c, W / 2, 800, t, "#ffffff", .3, 22, 1800, 40)
+    zoom = 1.25 - .25 * out_cubic(seg(t, 0, .35)) + .04 * t
+    c.save(); camera(c, W / 2, 1000, zoom, rot=-3 + 3 * out_cubic(seg(t, 0, .4)), shake=pulse(t, 0, .35) * 1.6, T=x.T)
+    # montaña de billetes
+    r = random.Random(11)
+    for i in range(60):
+        bx = r.uniform(-80, W + 80); by = r.uniform(1450, 2000) - (1 - abs(bx - W / 2) / 700) * 260
+        c.save(); c.translate(bx, by); c.rotate(r.uniform(-40, 40))
+        rrect(c, -80, -38, 160, 76, 8, P(hexc(r.choice(["#3f9e4d", "#4fb35c", "#2f8a3f"]))))
+        rrect(c, -68, -27, 136, 54, 5, P(hexc("#9fe0a8"), stroke=3)); text(c, "€", 0, 15, 40, hexc("#1f5e2a"))
+        c.restore()
+    character(c, "LEO", W / 2, 1000, 1.3, emo="excited", talk=x.talk("LEO"), t=t * 1.6, pose="fist", shades=True,
+              light=("#fff3c0", .25))
+    c.restore()
+    coins(c, t + 1.0, 0, n=46, seed=21)
+    confetti(c, t)
+    # contador que golpea
+    k = out_back(seg(t, .05, .4), 3.0)
+    c.save(); c.translate(W / 2, 470); c.scale(k, k); c.rotate(-4)
+    glow(c, 0, -50, 520, "#ffffff", .5)
+    text(c, "1.000.000 €", 0, 0, 150, shader=lin(0, -130, 0, 10, [hexc("#ffffff"), hexc("#ffe066"), hexc("#f0a000")], [0, .4, 1]),
+         stroke=14, stroke_color=hexc("#3a1800"), shadow=24)
+    c.restore()
+    k2 = out_back(seg(t, l0["s"] + 1.0, l0["s"] + 1.3), 2.5)
+    if k2 > 0:
+        c.save(); c.translate(W / 2 + 230, 640); c.scale(k2, k2); c.rotate(8)
+        rrect(c, -190, -62, 380, 124, 24, P(hexc("#e0262f"))); rrect(c, -190, -62, 380, 124, 24, P(hexc("#ffffff"), stroke=6))
+        text(c, "15 AÑOS", 0, 26, 76, hexc("#ffffff"))
+        c.restore()
+    hud(c, x.T, 30, 1_000_000, 1.0, money_flash=pulse(t, 0, .6))
+    flash(c, pulse(t, 0, .12))
+
+def gray_layer(c):
+    p = skia.Paint()
+    m = [0.30, 0.59, 0.11, 0, 0] * 3 + [0, 0, 0, 1, 0]
+    p.setColorFilter(skia.ColorFilters.Matrix(m))
+    c.saveLayer(None, p)
+
+def s_freeze(c, x):
+    t, d = x.t, x.d
+    fx = x.at("flash", x.at("flash", 0).d - 0.02)
+    c.save(); camera(c, W / 2, H / 2, 1 + .06 * out_cubic(seg(t, 0, .25)), rot=-1.5, T=x.T)
+    gray_layer(c); s_flash(c, fx); c.restore()
+    c.restore()
+    c.drawRect(skia.Rect.MakeWH(W, H), P(hexc("#000000", .25)))
+    k = out_back(seg(t, .05, .3), 2.5)
+    c.save(); c.translate(W / 2, 1180); c.scale(k, k); c.rotate(-5)
+    rrect(c, -330, -90, 660, 180, 30, P(hexc("#ffd400"))); rrect(c, -330, -90, 660, 180, 30, P(hexc("#000000"), stroke=8))
+    text(c, "ESPERA...", 0, 36, 110, hexc("#000000"))
+    c.restore()
+    flash(c, pulse(t, 0, .08) * .8)
+
+def vhs(c, t, amt=1.0, seed=0):
+    r = random.Random(int(t * 60) + seed)
+    for _ in range(int(14 * amt)):
+        y = r.random() * H; h = r.uniform(6, 60)
+        rect(c, 0, y, W, h, P(hexc(r.choice(["#ffffff", "#ff2a6a", "#2adfff"]), .12 * amt)))
+    for yy in range(0, H, 6): c.drawLine(0, yy, W, yy, P(hexc("#000000", .18), stroke=2))
+
+def s_rewind(c, x):
+    t, d = x.t, x.d
+    p = seg(t, 0, d - .15)
+    fl = x.at("flash", 0); fd = fl.d
+    rt = fd * (1 - in_cubic(p)) * 1.0
+    c.save(); camera(c, W / 2 + math.sin(t * 40) * 14, H / 2, 1.05 + .3 * in_cubic(p), rot=math.sin(t * 30) * 2, T=x.T)
+    gray_layer(c) if p > .5 else c.save()
+    s_flash(c, x.at("flash", max(0.01, rt)))
+    c.restore()
+    c.restore()
+    c.drawRect(skia.Rect.MakeWH(W, H), P(hexc("#10204a", .35 + .4 * p)))
+    vhs(c, t, 1.0)
+    day = max(1, int(round(30 - 29 * in_out(p))))
+    text(c, "◀◀", 150, 230, 90, hexc("#ffffff"), fam="DejaVu Sans", alpha=.5 + .5 * (int(t * 6) % 2))
+    text(c, "REBOBINANDO", 230, 225, 54, hexc("#ffffff"), align="left", fam="DejaVu Sans Mono", weight=700)
+    c.save(); c.translate(W / 2, 1100)
+    rrect(c, -300, -170, 600, 300, 40, P(hexc("#000000", .65)))
+    text(c, "DÍA", 0, -80, 60, hexc("#ffd400"), weight=800, spacing=8)
+    text(c, f"{day}", 0, 90, 200, hexc("#ffffff"), stroke=10)
+    c.restore()
+    flash(c, seg(t, d - .15, d), "#ffffff")
+
+STAMPS = [("2", "HISTORIA", 200, 640, -14), ("3", "MATES", 880, 560, 12), ("4", "INGLÉS", 870, 1120, 9)]
+
 def s_hook(c, x):
     t, d = x.t, x.d
-    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=lin(0, 0, 0, H, [hexc("#07060d"), hexc("#141024"), hexc("#07060d")])))
-    c.save(); camera(c, W / 2, H / 2, 1.0 + 0.06 * t / d, T=x.T)
-    # números gigantes de fondo
-    text(c, "30", W / 2, 1050, 900, hexc("#ffffff", 0.035 + 0.02 * math.sin(t)))
-    # foco
-    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=rad(W / 2, 700, 900, [hexc("#ffcf7a", .28), hexc("#ffcf7a", 0)])))
+    l0, l1 = x.l(0), x.l(1)
+    st = x.sfx_all("stamp")
+    tick = x.sfx_t("tick")
+    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=lin(0, 0, 0, H, [hexc("#07060d"), hexc("#1a1030"), hexc("#07060d")])))
+    sh = sum(pulse(t, s, .18) for s in st)
+    c.save(); camera(c, W / 2, H / 2, 1.0 + 0.08 * t / d, shake=sh * .8, T=x.T)
+    text(c, "30", W / 2, 1050, 900, hexc("#ffffff", 0.04))
+    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=rad(W / 2, 700, 900, [hexc("#9fb8ff", .22), hexc("#9fb8ff", 0)])))
     c.drawPath(path([(W / 2 - 120, -50), (W / 2 + 120, -50), (W / 2 + 520, 1700), (W / 2 - 520, 1700)]),
-               P(shader=lin(0, 0, 0, 1700, [hexc("#fff2c9", .18), hexc("#fff2c9", 0)]), blur=30))
-    DUST.dust(c, t, alpha=.5)
-    emo = "sad" if t < x.l(1)["s"] else "determined"
-    character(c, "LEO", W / 2, 860, 1.35, emo=emo, talk=x.talk("LEO"), t=t, look=(0, .2 if emo == "sad" else 0),
-              light=("#ffcf7a", .15))
+               P(shader=lin(0, 0, 0, 1700, [hexc("#dfe8ff", .16), hexc("#dfe8ff", 0)]), blur=30))
+    DUST.dust(c, t, "#cfe0ff", alpha=.4)
+    emo = "sad" if t < l1["s"] else "determined"
+    character(c, "LEO", W / 2, 990, 1.2, emo=emo, talk=x.talk("LEO"), t=t, look=(0, .3) if emo == "sad" else (0, 0),
+              light=("#9fb8ff", .12), pose="idle" if emo == "sad" else "fist")
     c.restore()
-    # textos cinéticos
-    l1, l2 = x.l(1), x.l(2)
-    if t > l1["s"] + 0.6:
-        k = out_back(seg(t, l1["s"] + .6, l1["s"] + 1.0))
-        c.save(); c.translate(W / 2, 360); c.scale(k, k)
-        text(c, "30 DÍAS", 0, 0, 150, shader=lin(0, -120, 0, 20, [hexc("#fff5b8"), hexc("#ffb21e")]), stroke=12,
-             stroke_color=hexc("#3a2000"), shadow=20)
+    # sellos de suspenso
+    out = out_cubic(seg(t, l1["s"] - .2, l1["s"] + .2))
+    for i, (n, sub, sx, sy, rot) in enumerate(STAMPS):
+        if i >= len(st) or t < st[i]: continue
+        k = 1 + 2.2 * (1 - out_cubic(seg(t, st[i], st[i] + .14)))
+        a = seg(t, st[i], st[i] + .06) * (1 - out)
+        c.save(); c.translate(sx, sy - out * 200); c.rotate(rot); c.scale(k, k)
+        c.saveLayerAlpha(None, int(255 * a))
+        rrect(c, -170, -120, 340, 240, 26, P(hexc("#e0262f"), stroke=12))
+        rrect(c, -150, -100, 300, 200, 18, P(hexc("#e0262f"), stroke=4))
+        text(c, n, 0, 50, 150, hexc("#e0262f"))
+        text(c, sub, 0, -55, 38, hexc("#e0262f"), weight=800, spacing=4)
+        text(c, "SUSPENSO", 0, 92, 34, hexc("#e0262f"), weight=800, spacing=6)
+        c.restore(); c.restore()
+    # reto + cuenta atrás
+    if tick is not None and t > tick:
+        k = out_back(seg(t, tick, tick + .35), 2)
+        c.save(); c.translate(W / 2, 300); c.scale(k, k)
+        rrect(c, -320, -60, 640, 100, 50, P(hexc("#e0262f")))
+        text(c, "RETO", 0, 12, 58, hexc("#ffffff"), spacing=14)
+        rrect(c, -420, 80, 840, 200, 34, P(hexc("#000000", .75))); rrect(c, -420, 80, 840, 200, 34, P(hexc("#ffd400"), stroke=5))
+        rem = 30 * 86400 - (t - tick) * 3600 * 3
+        dd = int(rem // 86400); hh = int(rem % 86400 // 3600); mm = int(rem % 3600 // 60); ss = int(rem % 60)
+        text(c, f"{dd:02d}d {hh:02d}:{mm:02d}:{ss:02d}", 0, 215, 110, hexc("#ffd400"), fam="JetBrains Mono", weight=800)
         c.restore()
-    if t > l2["s"]:
-        k = out_back(seg(t, l2["s"], l2["s"] + .35))
-        p = in_cubic(seg(t, l2["s"] + .1, l2["s"] + 1.3))
-        val = int(1_000_000 * p)
-        s = f"{val:,} €".replace(",", ".")
-        c.save(); c.translate(W / 2, 560); c.scale(k, k)
-        glow(c, 0, -50, 420, "#ffc53d", .35 * k)
-        text(c, s, 0, 0, 128, shader=lin(0, -110, 0, 10, [hexc("#ffffff"), hexc("#ffd34a"), hexc("#e09a0f")], [0, .4, 1]),
-             stroke=10, stroke_color=hexc("#2a1700"), shadow=20)
-        c.restore()
-        coins(c, t, l2["s"] + 1.2, n=22)
-    flash(c, pulse(t, l2["s"], .25) * .6, "#fff3c4")
-    flash(c, 1 - seg(t, 0, .5), "#000000")
+        ko = out_back(seg(t, tick + 1.6, tick + 2.0))
+        if ko > 0:
+            c.save(); c.translate(W / 2, 700); c.scale(ko, ko)
+            text(c, "→ 1.000.000 €", 0, 0, 90, shader=lin(0, -80, 0, 10, [hexc("#ffffff"), hexc("#ffd34a"), hexc("#e09a0f")], [0, .4, 1]), stroke=10, stroke_color=hexc("#2a1700"))
+            c.restore()
+    flash(c, 1 - seg(t, 0, .2))
 
 # ------------------------------------------------------------------ 2. TÍTULO
 def s_title(c, x):
@@ -467,7 +579,7 @@ def s_cliff(c, x):
         c.restore()
     flash(c, pulse(t, boom, .12), "#ffffff")
 
-SCENE_FUNCS = {"hook": s_hook, "title": s_title, "kitchen": s_kitchen, "bedroom": s_bedroom,
+SCENE_FUNCS = {"flash": s_flash, "freeze": s_freeze, "rewind": s_rewind, "hook": s_hook, "title": s_title, "kitchen": s_kitchen, "bedroom": s_bedroom,
                "logo": s_logo, "plan": s_plan, "cliff": s_cliff}
 # escenas en las que se muestra el HUD (día / dinero)
 HUD_SCENES = {"kitchen", "bedroom", "logo", "plan"}

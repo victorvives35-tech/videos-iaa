@@ -30,6 +30,11 @@ class Ctx:
                 env = ln["env"]
                 return env[min(k, len(env) - 1)] if env else 0
         return 0.0
+    def at(self, scene_id, t):
+        sc = next(s for s in TL["scenes"] if s["id"] == scene_id)
+        return Ctx(sc, sc["start"] + t)
+    def sfx_all(self, name):
+        return [e["t"] - self.sc["start"] for e in TL["sfx"] if e["scene"] == self.sc["id"] and e["name"] == name]
     def sfx_t(self, name):
         for e in TL["sfx"]:
             if e["scene"] == self.sc["id"] and e["name"] == name:

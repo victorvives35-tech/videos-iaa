@@ -327,7 +327,7 @@ def _body(c, sp, pose, t, breath):
     c.restore()
 
 def character(c, who, x, y, scale=1.0, emo="neutral", talk=0.0, t=0.0, pose="idle", look=(0, 0),
-              tilt=0.0, blink_seed=0, light=None, flip=False):
+              tilt=0.0, blink_seed=0, light=None, flip=False, shades=False):
     """Dibuja un personaje de busto. (x, y) = centro de la cabeza."""
     sp = CHARS[who]
     # parpadeo pseudoaleatorio
@@ -366,6 +366,12 @@ def character(c, who, x, y, scale=1.0, emo="neutral", talk=0.0, t=0.0, pose="idl
         for s in (-1, 1): rrect(c, s * 37 - 28, -28, 56, 42, 12, g)
         c.drawLine(-9, -10, 9, -10, g)
         for s in (-1, 1): rrect(c, s * 37 - 24, -24, 26, 12, 6, P(hexc("#ffffff", .25)))
+    if shades:
+        sg = P(shader=lin(0, -30, 0, 20, [hexc("#2a2a3a"), hexc("#05050a")]))
+        for s in (-1, 1): rrect(c, s * 40 - 34, -30, 68, 46, 16, sg)
+        c.drawLine(-8, -16, 8, -16, P(hexc("#111111"), stroke=7))
+        for s in (-1, 1): c.drawLine(s * 74, -18, s * 94, -24, P(hexc("#111111"), stroke=7))
+        for s in (-1, 1): c.drawLine(s * 40 - 22, -18, s * 40 - 6, -26, P(hexc("#ffffff", .7), stroke=5))
     if sp.get("earrings"):
         for s in (-1, 1): oval(c, s * 94, 38, 8, 8, P(hexc("#ffd34a")))
     _hair_front(c, sp, t)

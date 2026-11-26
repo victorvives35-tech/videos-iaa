@@ -108,6 +108,23 @@ def sfx(name):
         add(x, hp(noise(0.03), 2000) * np.exp(-tt(0.03) * 100), 0, 0.8)
         add(x, bp(noise(0.08), 800, 4000) * np.exp(-tt(0.08) * 50), 0.09, 0.7)
         return x
+    if name == "scratch":
+        d = 0.55; t = tt(d); x = noise(d)
+        f = 1200 + 1000 * np.sin(2 * np.pi * 7 * t)
+        y = bp(x, 600, 4000) * (0.5 + 0.5 * np.sin(2 * np.pi * np.cumsum(f) / SR / 40))
+        return y * env_adsr(len(t), 0.005, 0.2) * 1.2
+    if name == "rewind":
+        d = 1.5; t = tt(d); f = 300 + 1800 * (t / d) ** 1.5
+        x = 0.25 * np.sign(np.sin(2 * np.pi * np.cumsum(f) / SR)) + 0.4 * bp(noise(d), 2000, 9000)
+        return lp(x, 6000) * env_adsr(len(t), 0.05, 0.1) * (0.6 + 0.4 * np.sin(2 * np.pi * 9 * t))
+    if name == "stamp":
+        d = 0.6; t = tt(d)
+        return np.tanh(3 * (np.sin(2 * np.pi * (50 + 80 * np.exp(-t * 30)) * t) * np.exp(-t * 12) + lp(noise(d), 1500) * np.exp(-t * 25)))
+    if name == "tick":
+        d = 3.2; x = np.zeros(int(d * SR))
+        for k in range(int(d / 0.25)):
+            add(x, hp(noise(0.02), 3000) * np.exp(-tt(0.02) * 200) + 0.3 * np.sin(2 * np.pi * (2400 if k % 2 else 1800) * tt(0.02)), k * 0.25, 0.8)
+        return x
     return np.zeros(10)
 
 # ---------------- música por escenas ----------------
@@ -118,10 +135,35 @@ Am, F, C, G, Dm, E = [57, 60, 64], [53, 57, 60], [48, 55, 64], [55, 59, 62], [50
 
 def span(i): s = SC[i]; return s["start"], s["start"] + s["dur"]
 
+# flash: trap épico a tope
+a, b = span("flash")
+fl = np.zeros(int((b - a + 1) * SR))
+bt = 60 / 140
+for j, k in enumerate(np.arange(0, b - a + bt, bt)):
+    if j % 2 == 0: add(fl, kick(), k, 0.9)
+    else: add(fl, clap(), k, 0.6)
+    for h in range(4): add(fl, hat(), k + h * bt / 4, 0.25)
+add(fl, sub808(33, b - a + 0.5), 0, 0.5)
+add(fl, pad([57, 61, 64, 69], b - a + 0.6, 3500), 0, 0.35)
+for q, n in enumerate([81, 85, 88, 93, 88, 85] * 6):
+    add(fl, pluck(n, 0.4) * 0.5, q * bt / 2, 0.25)
+add(music, fl, a, 1.0)
+# freeze: frenazo de cinta (la cola de la música bajando de tono)
+a2, b2 = span("freeze")
+tail = fl[int((b - a - 0.6) * SR): int((b - a) * SR)]
+idx = np.cumsum(np.linspace(1.0, 0.05, int(0.9 * SR)))
+idx = idx[idx < len(tail) - 1].astype(int)
+add(music, tail[idx] * np.linspace(1, 0, len(idx)), a2, 1.0)
+# rewind: la música del flash al revés y acelerando
+a3, b3 = span("rewind")
+rv = fl[: int((b - a) * SR)][::-1]
+idx = np.cumsum(np.linspace(1.5, 3.0, int((b3 - a3) * SR)))
+idx = idx[idx < len(rv) - 1].astype(int)
+add(music, lp(rv[idx], 5000) * 0.7, a3, 1.0)
 # hook: drone oscuro + latido
 a, b = span("hook")
 add(music, drone(33, b - a + 0.5), a, 0.25)
-for k in np.arange(a + 0.3, b, beat * 2):
+for k in np.arange(a + 0.3, b, beat * 2):  # latido
     add(music, kick(0.4), k, 0.35); add(music, kick(0.4), k + 0.18, 0.2)
 # title: golpe + pad épico
 a, b = span("title")
@@ -168,12 +210,11 @@ add(music, pad([50, 53, 56], b - a + 1.5, 700), a + 0.3, 0.2)
 
 # ---------------- efectos ----------------
 fx = np.zeros(N)
-G = {"riser": 0.35, "boom": 0.8, "cash": 0.5, "paper": 0.5, "thunder": 0.6, "door": 0.7,
+G = {"scratch": 0.7, "rewind": 0.5, "stamp": 0.8, "tick": 0.45, "riser": 0.35, "boom": 0.8, "cash": 0.5, "paper": 0.5, "thunder": 0.6, "door": 0.7,
      "idea": 0.6, "whoosh": 0.6, "pop": 0.5, "camera": 0.6}
 for e in TL["sfx"]:
     x = sfx(e["name"])
-    t0 = e["t"] - (3.0 if e["name"] == "riser" and e["t"] > 3 else 0)
-    if e["name"] == "riser": t0 = 0.0
+    t0 = e["t"]
     add(fx, x, t0, G.get(e["name"], 0.5))
 
 # ---------------- mezcla con ducking ----------------
