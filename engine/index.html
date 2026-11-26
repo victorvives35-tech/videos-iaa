@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Fredoka"; src: url("../assets/fonts/Fredoka.woff2") format("woff2"); font-weight: 300 700; }
+  @font-face { font-family: "Nunito"; src: url("../assets/fonts/Nunito.woff2") format("woff2"); font-weight: 200 1000; }
+  :root { --ink: #262833; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+  #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: "Nunito", "Noto Color Emoji", sans-serif; color: var(--ink); }
+  #stage { position: absolute; inset: 0; }
+  #ui { position: absolute; inset: 0; pointer-events: none; }
+  .abs { position: absolute; }
+  .box { background: #fff; border: 7px solid var(--ink); border-radius: 34px; box-shadow: 0 12px 0 rgba(38,40,51,.9), 0 24px 40px rgba(0,0,0,.18); }
+  .emoji { font-family: "Noto Color Emoji"; line-height: 1; }
+
+  /* cabecera del consejo */
+  .tip { left: 40px; right: 40px; top: 70px; height: 150px; display: flex; align-items: center; gap: 26px; padding: 0 34px; }
+  .tip .num { width: 96px; height: 96px; border-radius: 50%; border: 7px solid var(--ink); display: grid; place-items: center; font: 700 60px "Fredoka"; color: #fff; flex: none; }
+  .tip .kick { font: 900 26px "Nunito"; letter-spacing: 3px; }
+  .tip .lab { font: 1000 50px "Nunito"; line-height: 1.02; text-transform: uppercase; }
+
+  /* medidor */
+  .meter { right: 56px; top: 236px; width: 360px; height: 74px; padding: 10px 18px; border-radius: 22px; display: flex; align-items: center; gap: 14px; }
+  .meter .ml { font: 1000 19px/1.05 "Nunito"; color: #e63946; letter-spacing: 1px; width: 120px; }
+  .meter .ml small { display: block; font-size: 13px; color: #8a8fa3; }
+  .meter .bar { flex: 1; height: 30px; border-radius: 15px; border: 5px solid var(--ink); background: #eef0f4; overflow: hidden; }
+  .meter .fill { height: 100%; border-radius: 10px; }
+
+  /* tarjetas */
+  .card { left: 50%; top: 360px; width: 760px; transform-origin: 50% 0; padding: 34px 40px; text-align: center; }
+  .card .k { font: 1000 30px "Nunito"; letter-spacing: 3px; color: #e76f51; text-transform: uppercase; }
+  .card .big { font: 700 120px/1 "Fredoka"; }
+  .card .mid { font: 1000 54px/1.1 "Nunito"; }
+  .card .sm { font: 800 28px "Nunito"; color: #6b7083; }
+  .row { display: flex; justify-content: space-between; font: 800 32px "Nunito"; padding: 10px 14px; border-radius: 12px; margin: 6px 0; }
+  .row.hl { background: #ffe066; border: 4px solid #f4a100; }
+  .dash { border-top: 5px dashed #c5c9d6; margin: 16px 0; }
+  .stamp { position: absolute; right: -30px; top: -40px; width: 120px; height: 120px; border-radius: 50%; border: 7px solid var(--ink); display: grid; place-items: center; font: 700 76px "Fredoka"; color: #fff; }
+
+  /* título gancho */
+  .hook { left: 50%; top: 150px; width: 900px; padding: 34px 40px 40px; text-align: center; transform-origin: 50% 50%; }
+  .hook .t { font: 700 118px/1 "Fredoka"; color: #2a9d8f; text-transform: uppercase; letter-spacing: 2px; }
+  .hook .s { font: 900 42px "Nunito"; margin-top: 10px; }
+  .hook .tag { display: inline-block; margin-top: 16px; background: #e63946; color: #fff; font: 900 32px "Nunito"; padding: 6px 24px; border-radius: 40px; transform: rotate(-3deg); border: 5px solid var(--ink); }
+
+  /* bocadillo */
+  .bubble { padding: 22px 34px; border-radius: 40px; font: 1000 54px/1.05 "Nunito"; text-align: center; max-width: 640px; transform-origin: 50% 100%; }
+  .bubble:after { content: ""; position: absolute; bottom: -38px; width: 50px; height: 50px; background: #fff; border-right: 7px solid var(--ink); border-bottom: 7px solid var(--ink); transform: rotate(45deg) skew(10deg, 10deg); }
+  .bubble.l:after { left: 70px; } .bubble.r:after { right: 70px; }
+
+  /* subtítulos */
+  .subs { left: 30px; right: 30px; top: 1400px; text-align: center; font: 1000 86px/1.15 "Nunito"; letter-spacing: 0; }
+  .w { display: inline-block; margin: 0 20px; color: #fff; -webkit-text-stroke: 20px var(--ink); paint-order: stroke fill; text-shadow: 0 10px 0 var(--ink); transform-origin: 50% 70%; }
+  .w.on { color: #ffd43b; }
+  .w.em { color: #ff6b6b; }
+  .w.em.on { color: #ffd43b; }
+
+  /* resumen */
+  .summary { left: 50%; top: 190px; width: 900px; transform: translateX(-50%); text-align: center; }
+  .summary h1 { font: 700 110px "Fredoka"; color: #ffd43b; -webkit-text-stroke: 14px var(--ink); paint-order: stroke fill; text-shadow: 0 10px 0 var(--ink); }
+  .summary .sub { font: 900 40px "Nunito"; color: #fff; margin-bottom: 26px; }
+  .sitem { display: flex; align-items: center; gap: 22px; margin: 22px 0; padding: 18px 28px; text-align: left; }
+  .sitem .n { width: 74px; height: 74px; border-radius: 50%; border: 6px solid var(--ink); color: #fff; font: 700 44px "Fredoka"; display: grid; place-items: center; flex: none; }
+  .sitem .lab { flex: 1; font: 1000 44px "Nunito"; }
+  .sitem .x { font: 700 70px "Fredoka"; color: #e63946; }
+  .cta { display: inline-block; margin-top: 40px; padding: 26px 80px; border-radius: 80px; background: #e63946; color: #fff; font: 1000 74px "Nunito"; letter-spacing: 3px; border: 8px solid var(--ink); box-shadow: 0 12px 0 var(--ink); }
+  .cta-sub { font: 900 36px "Nunito"; color: #fff; margin-top: 30px; }
+  .handle { left: 0; right: 0; bottom: 60px; text-align: center; font: 900 34px "Nunito"; color: rgba(255,255,255,.85); -webkit-text-stroke: 8px rgba(38,40,51,.6); paint-order: stroke fill; }
+</style>
+<script src="characters.js"></script>
+<script src="scenes.js"></script>
+<script src="engine.js"></script>
+</head>
+<body>
+<div id="root">
+  <svg id="stage" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="ui"></div>
+</div>
+</body>
+</html>

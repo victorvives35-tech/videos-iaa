@@ -1,0 +1,6 @@
+numpy
+soundfile
+piper-tts
+kokoro-onnx
+faster-whisper
+edge-tts
