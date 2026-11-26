@@ -4,11 +4,12 @@ Formatos de `voz` en el guion (o con --voz en la línea de comandos):
   piper:es_ES-davefx-medium      (local, gratis, sin internet tras descargar el modelo)
   kokoro:em_alex                 (local, gratis; voces es: em_alex, em_santa, ef_dora)
   edge:es-ES-AlvaroNeural        (gratis, necesita internet; muy natural)
-  elevenlabs:<voice_id>          (de pago, la mejor calidad; requiere ELEVENLABS_API_KEY)
+  elevenlabs:<voice_id>          (la mejor calidad; admite etiquetas [gritando], [emocionado], [ríe]...)
 """
 import json
 import os
 import subprocess
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -42,7 +43,8 @@ def _piper_model(name):
 _kokoro = None
 
 
-def synth(text, out_wav, voice="piper:es_ES-davefx-medium", speed=1.0):
+def synth(text, out_wav, voice="piper:es_ES-davefx-medium", speed=1.0, opts=None):
+    opts = opts or {}
     """Genera `out_wav` con el texto dado. Devuelve la ruta."""
     engine, _, name = voice.partition(":")
     out_wav = Path(out_wav)
@@ -72,19 +74,25 @@ def synth(text, out_wav, voice="piper:es_ES-davefx-medium", speed=1.0):
         subprocess.run(cmd, check=True, capture_output=True)
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(mp3), str(raw)], check=True)
     elif engine == "elevenlabs":
-        key = os.environ.get("ELEVENLABS_API_KEY")
-        if not key:
-            raise SystemExit("Falta ELEVENLABS_API_KEY")
+        # La clave puede venir de ELEVENLABS_API_KEY o inyectarla un proxy.
+        key = os.environ.get("ELEVENLABS_API_KEY", "proxy-injected")
+        model = opts.get("model", "eleven_v3")
+        settings = {"stability": opts.get("stability", 0.5 if model == "eleven_v3" else 0.3),
+                    "similarity_boost": 0.8, "style": opts.get("style", 0.6), "use_speaker_boost": True}
+        if model != "eleven_v3":
+            settings["speed"] = speed
+        body = {"text": text, "model_id": model, "voice_settings": settings, "language_code": "es"}
         req = urllib.request.Request(
-            f"https://api.elevenlabs.io/v1/text-to-speech/{name}?output_format=mp3_44100_128",
-            data=json.dumps({
-                "text": text, "model_id": "eleven_multilingual_v2",
-                "voice_settings": {"stability": 0.35, "similarity_boost": 0.8, "style": 0.45, "speed": speed},
-            }).encode(),
+            f"https://api.elevenlabs.io/v1/text-to-speech/{name}?output_format=mp3_44100_192",
+            data=json.dumps(body).encode(),
             headers={"xi-api-key": key, "Content-Type": "application/json"})
         mp3 = out_wav.with_suffix(".mp3")
-        mp3.write_bytes(urllib.request.urlopen(req).read())
-        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(mp3), str(raw)], check=True)
+        try:
+            mp3.write_bytes(urllib.request.urlopen(req, timeout=120).read())
+        except urllib.error.HTTPError as e:
+            raise SystemExit(f"ElevenLabs {e.code}: {e.read().decode()[:400]}")
+        atempo = f",atempo={speed:.3f}" if model == "eleven_v3" and abs(speed - 1) > 0.01 else ""
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(mp3), "-af", "anull" + atempo, str(raw)], check=True)
     else:
         raise SystemExit(f"Motor de voz desconocido: {engine}")
 

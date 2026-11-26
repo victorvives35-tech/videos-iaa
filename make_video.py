@@ -191,6 +191,8 @@ def build(script_path, voice_override=None, preview=False, workers=3, keep=False
     work.mkdir(parents=True, exist_ok=True)
     vcfg = script.get("voice", {})
     voice = voice_override or vcfg.get("id", "piper:es_ES-davefx-medium")
+    if voice_override and not voice_override.startswith("elevenlabs"):
+        vcfg = {k: v for k, v in vcfg.items() if k == "speed"}
     speed = vcfg.get("speed", 1.1)
 
     beats = script["beats"]
@@ -203,10 +205,14 @@ def build(script_path, voice_override=None, preview=False, workers=3, keep=False
     for i, b in enumerate(beats):
         words = parse_words(b["text"])
         say = b.get("say") or " ".join(w["w"] for w in words)
-        key = hashlib.md5(f"{voice}|{speed}|{say}".encode()).hexdigest()[:12]
+        if b.get("tag"):
+            say = f"[{b['tag']}] {say}"
+        if not voice.startswith("elevenlabs"):
+            say = re.sub(r"\[[^\]]*\]\s*", "", say)
+        key = hashlib.md5(f"{voice}|{speed}|{say}|{json.dumps(vcfg, sort_keys=True)}".encode()).hexdigest()[:12]
         wav = work / f"v_{key}.wav"
         if not wav.exists():
-            tts.synth(say, wav, voice=voice, speed=b.get("speed", speed))
+            tts.synth(say, wav, voice=voice, speed=b.get("speed", speed), opts=vcfg)
         audio, _ = sf.read(wav, dtype="float32")
         dur = len(audio) / SR
         times_cache = wav.with_suffix(".times.json")
@@ -232,7 +238,7 @@ def build(script_path, voice_override=None, preview=False, workers=3, keep=False
         timeline_beats.append(tb)
         pause = b.get("pause", 0.22 if not re.search(r"[.!?…]$", b["text"].strip()) else 0.32)
         cursor += dur + pause
-        print(f"  [{i + 1:02d}] {dur:4.1f}s  {say}")
+        print(f"  [{i + 1:02d}] {dur:4.1f}s  {say}", flush=True)
 
     tail = script.get("tail", 2.2)
     duration = cursor + tail
