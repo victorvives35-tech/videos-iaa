@@ -4,3 +4,5 @@ piper-tts
 kokoro-onnx
 faster-whisper
 edge-tts
+chatterbox-tts
+librosa

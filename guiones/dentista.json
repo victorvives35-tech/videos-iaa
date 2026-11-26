@@ -2,7 +2,7 @@
   "title": "Cómo conseguir que tu dentista no te atienda nunca más",
   "scene": "dentista",
   "voice": {
-    "id": "piper:es_ES-davefx-medium",
+    "id": "chatterbox:",
     "speed": 1.12
   },
   "meter": {

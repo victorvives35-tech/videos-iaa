@@ -3,6 +3,7 @@
 Formatos de `voz` en el guion (o con --voz en la línea de comandos):
   piper:es_ES-davefx-medium      (local, gratis, sin internet tras descargar el modelo)
   kokoro:em_alex                 (local, gratis; voces es: em_alex, em_santa, ef_dora)
+  chatterbox:                    (local, gratis, muy expresiva; admite exageración emocional)
   edge:es-ES-AlvaroNeural        (gratis, necesita internet; muy natural)
   elevenlabs:<voice_id>          (la mejor calidad; admite etiquetas [gritando], [emocionado], [ríe]...)
 """
@@ -41,6 +42,24 @@ def _piper_model(name):
 
 
 _kokoro = None
+_cb = None
+_wh = None
+
+
+def _check(wav, text):
+    """Parecido (0..1) entre lo que se oye en `wav` (whisper) y el texto esperado."""
+    global _wh
+    import difflib
+    import re
+    import numpy as np
+    from faster_whisper import WhisperModel
+    if _wh is None:
+        _wh = WhisperModel("small", device="cpu", compute_type="int8")
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(wav), "-ac", "1", "-ar", "16000", "-f", "f32le", "-"], capture_output=True).stdout
+    segs, _ = _wh.transcribe(np.frombuffer(raw, np.float32).copy(), language="es", beam_size=1)
+    heard = " ".join(s.text for s in segs)
+    n = lambda x: re.sub(r"[^a-zñáéíóúü0-9 ]", "", x.lower()).split()
+    return difflib.SequenceMatcher(None, n(heard), n(text)).ratio()
 
 
 def synth(text, out_wav, voice="piper:es_ES-davefx-medium", speed=1.0, opts=None):
@@ -73,6 +92,34 @@ def synth(text, out_wav, voice="piper:es_ES-davefx-medium", speed=1.0, opts=None
             cmd += ["--proxy", os.environ["HTTPS_PROXY"]]
         subprocess.run(cmd, check=True, capture_output=True)
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(mp3), str(raw)], check=True)
+    elif engine == "chatterbox":
+        global _cb
+        import torch
+        import torchaudio as ta
+        from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+        if _cb is None:
+            _cb = ChatterboxMultilingualTTS.from_pretrained(device="cuda" if torch.cuda.is_available() else "cpu")
+        ref = name if name and Path(name).exists() else str(ROOT / "assets" / "voz_ref_hombre.wav")
+        ex = opts.get("exaggeration", 0.8)
+        best = None
+        for attempt in range(opts.get("tries", 3)):
+            torch.manual_seed(opts.get("seed", 7) + attempt * 101)
+            w = _cb.generate(text, language_id="es", audio_prompt_path=ref, exaggeration=ex,
+                             cfg_weight=opts.get("cfg_weight", 0.35), temperature=0.8)
+            cand = out_wav.with_suffix(f".try{attempt}.wav")
+            ta.save(str(cand), w, _cb.sr)
+            score = _check(cand, text)
+            if best is None or score > best[0]:
+                best = (score, cand)
+            if score > 0.9:
+                break
+        best[1].rename(raw)
+        for c in out_wav.parent.glob(out_wav.stem + ".try*.wav"):
+            c.unlink()
+        if abs(speed - 1) > 0.01:
+            tmp = raw.with_suffix(".sp.wav")
+            subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-af", f"atempo={speed:.3f}", str(tmp)], check=True)
+            tmp.rename(raw)
     elif engine == "elevenlabs":
         # La clave puede venir de ELEVENLABS_API_KEY o inyectarla un proxy.
         key = os.environ.get("ELEVENLABS_API_KEY", "proxy-injected")

@@ -209,10 +209,16 @@ def build(script_path, voice_override=None, preview=False, workers=3, keep=False
             say = f"[{b['tag']}] {say}"
         if not voice.startswith("elevenlabs"):
             say = re.sub(r"\[[^\]]*\]\s*", "", say)
-        key = hashlib.md5(f"{voice}|{speed}|{say}|{json.dumps(vcfg, sort_keys=True)}".encode()).hexdigest()[:12]
+        key = hashlib.md5(f"{voice}|{speed}|{say}|{b.get('tag')}|{b.get('exaggeration')}|{json.dumps(vcfg, sort_keys=True)}".encode()).hexdigest()[:12]
         wav = work / f"v_{key}.wav"
         if not wav.exists():
-            tts.synth(say, wav, voice=voice, speed=b.get("speed", speed), opts=vcfg)
+            opts = dict(vcfg)
+            ex_map = vcfg.get("tag_exaggeration", {"shouting": 1.15, "excited": 0.95, "laughs": 0.85, "mischievously": 0.8, "sarcastic": 0.75, "exasperated": 0.95})
+            if b.get("tag") in ex_map:
+                opts["exaggeration"] = ex_map[b["tag"]]
+            if "exaggeration" in b:
+                opts["exaggeration"] = b["exaggeration"]
+            tts.synth(say, wav, voice=voice, speed=b.get("speed", speed), opts=opts)
         audio, _ = sf.read(wav, dtype="float32")
         dur = len(audio) / SR
         times_cache = wav.with_suffix(".times.json")

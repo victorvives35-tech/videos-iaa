@@ -1,0 +1,3 @@
+voz_ref_hombre.wav: fragmento del corpus CML-TTS (español), licencia CC BY 4.0,
+derivado de audiolibros de LibriVox (dominio público). Se usa solo como timbre de referencia.
+Fuentes Fredoka y Nunito: SIL Open Font License (Google Fonts).
