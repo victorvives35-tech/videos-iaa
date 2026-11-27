@@ -27,12 +27,12 @@ SCRIPT = [
 ]
 
 # ---------------------------------------------------------------- audio
-def tts(voice, text, path, tmp, rate=1.0):
+def tts(voice, text, path, tmp, rate=1.0, ls="0.85", extra=""):
     raw = path + ".raw.wav"
-    subprocess.run(["piper", "-m", voice, "--length-scale", "0.88", "-f", raw],
+    subprocess.run(["piper", "-m", voice, "--length-scale", ls, "-f", raw],
                    input=text.encode(), check=True, capture_output=True)
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", raw, "-af",
-                    f"asetrate=22050*{rate},aresample=44100,acompressor=threshold=-18dB:ratio=4,volume=1.5",
+                    f"asetrate=22050*{rate},aresample=44100{extra},acompressor=threshold=-18dB:ratio=4,volume=1.5",
                     "-ac", "1", path], check=True)
     with wave.open(path) as w:
         a = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
@@ -43,14 +43,14 @@ def repitch(a, f):
     n = int(len(a) / f)
     return np.interp(np.arange(n) * f, np.arange(len(a)), a).astype(np.float32)
 
-HUSS_STEP = 0.34
+HUSS_STEP = 0.40
 
 def huss_chant(hclip, crowd):
     n = int(SR * (HUSS_STEP * N_HUSS + .6))
     out = np.zeros(n, np.float32)
     for k in range(N_HUSS):
         s = int(k * HUSS_STEP * SR)
-        voices = [(1 + .03 * k, 0)] if not crowd else \
+        voices = [(1 + (.04 if k % 2 else 0), 0)] if not crowd else \
             [(.82, 0), (.93, 350), (1.05, -200), (1.18, 500), (1.32, 150)]
         for f, off in voices:
             c = repitch(hclip, f) * (1.0 if not crowd else .45)
@@ -58,14 +58,36 @@ def huss_chant(hclip, crowd):
             out[ss:e] += c[:e - ss]
     return out
 
+def bandnoise(n, lo, hi):
+    x = np.random.randn(n)
+    X = np.fft.rfft(x); f = np.fft.rfftfreq(n, 1 / SR)
+    X[(f < lo) | (f > hi)] = 0
+    y = np.fft.irfft(X, n); return (y / np.abs(y).max()).astype(np.float32)
+
+def make_huss(voice, tmp):
+    """'HUSS!' del meme: grito agudo y nasal (~360 Hz), con ataque de aire 'h' y cola 'ss' silbada."""
+    v = tts(voice, "Huss!", os.path.join(tmp, "huss.wav"), tmp, rate=2.8, ls="1.0",
+            extra=",atempo=0.5,atempo=0.72,highpass=f=250,equalizer=f=1800:t=q:w=1.5:g=7")
+    v = v[: int(SR * .30)]
+    v *= np.minimum(1, np.linspace(0, 12, len(v))) * np.minimum(1, np.linspace(5, 0, len(v)))
+    v /= np.abs(v).max()
+    h = bandnoise(int(SR * .05), 800, 3000) * np.linspace(0, 1, int(SR * .05)) * .25
+    ss_n = int(SR * .17)
+    ss = bandnoise(ss_n, 4500, 9000) * np.minimum(1, np.linspace(0, 8, ss_n)) * np.linspace(1, 0, ss_n) ** 1.5 * .45
+    out = np.zeros(len(h) + len(v) + ss_n // 2, np.float32)
+    out[:len(h)] += h
+    out[len(h):len(h) + len(v)] += v * .9
+    st = len(h) + int(len(v) * .6)
+    out[st:st + ss_n] += ss[: len(out) - st]
+    return out / np.abs(out).max() * .9
+
 def build(voice, tmp):
-    hclip = tts(voice, "Huss!", os.path.join(tmp, "huss.wav"), tmp, rate=1.0)
-    hclip = hclip[: int(SR * .32)] * np.minimum(1, np.linspace(6, 0, min(len(hclip), int(SR * .32))))
+    hclip = make_huss(voice, tmp)
     segs, cur, gap = [], .25, .2
     for i, (txt, scene, huss) in enumerate(SCRIPT):
         audio = np.zeros(0, np.float32); words = []
         if txt:
-            audio = tts(voice, txt, os.path.join(tmp, f"l{i}.wav"), tmp, rate=1.04)
+            audio = tts(voice, txt, os.path.join(tmp, f"l{i}.wav"), tmp, rate=1.0)
             ws = txt.split(); wts = [len(w.strip(".,?!:")) + 2 for w in ws]
             tot, acc, d = sum(wts), 0, len(audio) / SR
             for w, wt in zip(ws, wts):
@@ -116,7 +138,7 @@ def mix_audio(segs, total, out_wav):
 # ---------------------------------------------------------------- personajes
 SKIN = (255, 205, 160)
 CHARS = {
-    "me":     dict(head=SKIN, torso=(30, 30, 35), legs=(40, 60, 160), hair=(60, 35, 20), logo=(255, 60, 90)),
+    "me":     dict(head=SKIN, torso=(40, 90, 210), legs=(40, 90, 210), hair=None, logo=None, jersey="HUSS", cap=(30, 70, 190)),
     "friend": dict(head=(200, 150, 110), torso=(240, 60, 60), legs=(30, 30, 30), hair=(20, 20, 20), logo=(255, 230, 40)),
     "sister": dict(head=SKIN, torso=(255, 120, 200), legs=(140, 80, 200), hair=(230, 180, 60), logo=None, long_hair=True),
     "monster": dict(head=(120, 200, 60), torso=(70, 140, 40), legs=(50, 100, 30), hair=None, logo=None, angry=True),
@@ -146,12 +168,20 @@ def avatar(d, x, y, s, c, t, walk=0., arms="down", face="smile", look=0, rot_bob
             o = ph * s * .5
             block(d, [ax - lw/2 + o, ty, ax + lw/2 + o, ty + s*2], c["head"])
     block(d, [x - tw/2, ty, x + tw/2, hip], c["torso"])
+    if c.get("jersey"):
+        jf = font(max(10, int(s * .62)))
+        d.text((x, ty + s * .75), c["jersey"], font=jf, fill=(255, 205, 40), anchor="mm",
+               stroke_width=max(1, int(s * .05)), stroke_fill=(20, 30, 90))
     if c.get("logo"):
         d.polygon([(x - s*.4, ty + s*.5), (x + s*.4, ty + s*.5), (x, ty + s*1.3)], fill=c["logo"])
     hs = s * 1.25; hy = ty - hs * 1.05
     if c.get("long_hair"):
         d.rectangle([x - hs/2 - 8, hy - 6, x + hs/2 + 8, hy + hs * 1.25], fill=c["hair"])
     block(d, [x - hs/2, hy, x + hs/2, hy + hs], c["head"])
+    if c.get("cap"):
+        d.rectangle([x - hs/2 - 4, hy - s*.35, x + hs/2 + 4, hy + s*.3], fill=c["cap"], outline=(20, 20, 30), width=3)
+        d.rectangle([x - hs/2 + (hs*.2 if look >= 0 else -hs*.35), hy + s*.18, x + hs/2 + (hs*.35 if look >= 0 else -hs*.2), hy + s*.34], fill=c["cap"])
+        d.text((x, hy - s*.03), "H", font=font(max(10, int(s * .5))), fill=(255, 205, 40), anchor="mm")
     if c.get("hair"):
         d.rectangle([x - hs/2 - 4, hy - s*.25, x + hs/2 + 4, hy + s*.25], fill=c["hair"])
     ex = s * .2 * look
