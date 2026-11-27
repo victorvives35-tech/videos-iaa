@@ -164,6 +164,52 @@ const SCENES = {
     `,
     fg: (t) => `<rect x="-20" y="1560" width="${W + 40}" height="400" fill="#fdfdfd" stroke="${INK}" stroke-width="8"/>`,
   },
+
+  noche_electoral: {
+    pos: { yo: { x: 320, y: 1150, s: 1.08 }, otro: { x: 790, y: 1010, s: 1.12 } },
+    bg: (t) => {
+      const bars = [["#2f9e44", 0.92, "1º"], ["#1c7ed6", 0.7, "2º"], ["#e03131", 0.62, "3º"], ["#ae3ec9", 0.3, "4º"]];
+      const grow = Math.min(1, t / 2.5);
+      return `
+      <defs>${wallGrad("wall5", "#2b2f55", "#3d3a6b")}${wallGrad("scr", "#0b1d3a", "#14325f")}</defs>
+      <rect width="${W}" height="${H}" fill="url(#wall5)"/>
+      <rect y="1240" width="${W}" height="${H - 1240}" fill="#5a4a78"/>
+      <!-- ventana nocturna -->
+      <g transform="translate(40 300)">
+        <rect width="300" height="380" rx="12" fill="#13163a" stroke="${INK}" stroke-width="8"/>
+        ${[[60, 80], [200, 60], [130, 160], [240, 220], [80, 260]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${3 + (i % 2) * 2}" fill="#fff" opacity="${0.5 + 0.5 * Math.sin(t * 3 + i)}"/>`).join("")}
+        <circle cx="220" cy="110" r="36" fill="#ffe8a3"/><circle cx="236" cy="100" r="34" fill="#13163a"/>
+        <path d="M 0 380 L 0 300 L 50 300 L 50 260 L 110 260 L 110 320 L 160 320 L 160 240 L 230 240 L 230 290 L 300 290 L 300 380 Z" fill="#0a0c24"/>
+        ${[[70, 280], [130, 335], [185, 260], [250, 310]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="14" height="18" fill="#ffd43b" opacity="${(Math.floor(t * 0.7 + i) % 3) ? 0.9 : 0.2}"/>`).join("")}
+        <path d="M 150 0 L 150 380 M 0 190 L 300 190" stroke="${INK}" stroke-width="8"/>
+      </g>
+      <!-- televisión con resultados -->
+      <g transform="translate(470 340)">
+        <rect x="-16" y="-16" width="602" height="392" rx="22" fill="#1b1d26" stroke="${INK}" stroke-width="8"/>
+        <rect width="570" height="360" rx="10" fill="url(#scr)"/>
+        <rect x="0" y="0" width="570" height="54" fill="#e03131"/>
+        <text x="20" y="38" font-family="Fredoka" font-size="30" fill="#fff">ELECCIONES GENERALES</text>
+        <circle cx="530" cy="27" r="9" fill="#fff" opacity="${0.4 + 0.6 * (Math.floor(t * 2) % 2)}"/>
+        ${bars.map(([c, v, l], i) => `<rect x="${60 + i * 125}" y="${330 - 240 * v * grow}" width="90" height="${240 * v * grow}" rx="6" fill="${c}" stroke="#fff" stroke-width="3"/>
+          <text x="${105 + i * 125}" y="${320 - 240 * v * grow}" font-family="Fredoka" font-size="26" fill="#fff" text-anchor="middle">${l}</text>`).join("")}
+        <rect x="200" y="380" width="170" height="60" fill="#1b1d26" stroke="${INK}" stroke-width="7"/>
+      </g>
+      <!-- sofá -->
+      <rect x="60" y="900" width="540" height="900" rx="110" fill="#e8590c" stroke="${INK}" stroke-width="8"/>
+      <rect x="110" y="940" width="440" height="230" rx="70" fill="#f76707"/>
+      ${softShadow(790, 1610, 260, 40, 0.15)}
+    `;
+    },
+    fg: (t) => `
+      <!-- mesa con palomitas y mando -->
+      <rect x="120" y="1530" width="300" height="40" rx="10" fill="#1b1d26" stroke="${INK}" stroke-width="6"/>
+      <path d="M 170 1530 L 190 1440 L 290 1440 L 310 1530 Z" fill="#fff" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M 200 1440 L 205 1530 M 240 1440 L 240 1530 M 280 1440 L 275 1530" stroke="#e03131" stroke-width="12"/>
+      ${[[200, 1430], [230, 1418], [260, 1426], [285, 1434], [245, 1404]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="16" fill="#fff4c2" stroke="${INK}" stroke-width="4"/>`).join("")}
+      <rect x="860" y="1500" width="120" height="50" rx="14" fill="#343a40" stroke="${INK}" stroke-width="6"/>
+      <circle cx="890" cy="1525" r="8" fill="#e03131"/><circle cx="930" cy="1525" r="6" fill="#adb5bd"/><circle cx="955" cy="1525" r="6" fill="#adb5bd"/>
+    `,
+  },
 };
 
 function cabinet(top, color, handle = "#c9d2dc") {
@@ -178,6 +224,7 @@ function cabinet(top, color, handle = "#c9d2dc") {
 }
 SCENES.peluqueria.cabinet = "#a8743f";
 SCENES.avion.cabinet = "#c4bdac";
+SCENES.noche_electoral.cabinet = "#7a5230";
 for (const [k, sc] of Object.entries(SCENES)) {
   const fg = sc.fg, col = sc.cabinet || "#e9eef2";
   sc.fg = (t) => `<g transform="translate(0 100)">${fg(t)}</g>` + cabinet(1690, col);
