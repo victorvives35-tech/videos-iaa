@@ -83,6 +83,14 @@ def chant_cut(nh):
 
 def huss_chant(mode, nh):
     crowd = mode == "crowd"
+    if mode in ("baby", "babies"):  # HUSS de bebé: agudo; "babies" = coro de bebés
+        c, hits = chant_cut(nh); f = 1.35
+        out = np.zeros(int(len(c) / f) + int(.5 * SR), np.float32)
+        voices = [(1.35, 0)] if mode == "baby" else [(1.35, 0), (1.5, 70), (1.25, -40), (1.6, 120)]
+        for ff, off in voices:
+            v = repitch(c, ff) * (.9 if ff == 1.35 else .45)
+            st = max(0, int(off)); e = min(len(out), st + len(v)); out[st:e] += v[:e - st]
+        return out, [h / f for h in hits]
     if mode == "deep":  # HUSS de gigante: más grave y lento
         c, hits = chant_cut(nh); f = .7
         v = repitch(c, f) * 1.1
