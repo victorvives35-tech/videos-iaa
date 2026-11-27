@@ -16,7 +16,7 @@ SCRIPT = [
     ("In this town, every kid gets a superpower on their tenth birthday.", "town", None),
     ("My best friend got super speed.", "speed", None),
     ("My sister got to fly.", "fly", None),
-    ("And me? I got... the huss.", "me", None),
+    ("And me? I got...", "me", "solo"),
     ("Everyone laughed at me. Nobody knew what it did.", "laugh", None),
     ("Until one day, a giant monster attacked the town.", "monster", None),
     ("Everyone ran away. But I stood still, and I said:", "stand", None),
@@ -43,14 +43,14 @@ def repitch(a, f):
     n = int(len(a) / f)
     return np.interp(np.arange(n) * f, np.arange(len(a)), a).astype(np.float32)
 
-HUSS_STEP = 0.40
+HUSS_STEP = 0.46
 
 def huss_chant(hclip, crowd):
     n = int(SR * (HUSS_STEP * N_HUSS + .6))
     out = np.zeros(n, np.float32)
     for k in range(N_HUSS):
         s = int(k * HUSS_STEP * SR)
-        voices = [(1 + (.04 if k % 2 else 0), 0)] if not crowd else \
+        voices = [(1.0, 0)] if not crowd else \
             [(.82, 0), (.93, 350), (1.05, -200), (1.18, 500), (1.32, 150)]
         for f, off in voices:
             c = repitch(hclip, f) * (1.0 if not crowd else .45)
@@ -64,7 +64,13 @@ def bandnoise(n, lo, hi):
     X[(f < lo) | (f > hi)] = 0
     y = np.fft.irfft(X, n); return (y / np.abs(y).max()).astype(np.float32)
 
+HUSS_SAMPLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "huss.wav")
+
 def make_huss(voice, tmp):
+    if os.path.exists(HUSS_SAMPLE):  # el HUSS original del video de referencia
+        with wave.open(HUSS_SAMPLE) as w:
+            a = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
+        return a / np.abs(a).max() * .9
     """'HUSS!' del meme: grito agudo y nasal (~360 Hz), con ataque de aire 'h' y cola 'ss' silbada."""
     v = tts(voice, "Huss!", os.path.join(tmp, "huss.wav"), tmp, rate=2.8, ls="1.0",
             extra=",atempo=0.5,atempo=0.72,highpass=f=250,equalizer=f=1800:t=q:w=1.5:g=7")
@@ -115,11 +121,10 @@ def mix_audio(segs, total, out_wav):
         sc, st = s["scene"], s["start"]
         if sc == "speed": put(fx, sfx("whoosh"), st + .3)
         if sc == "fly": put(fx, sfx("boing"), st + .2)
-        if sc == "me": put(fx, sfx("pop"), st + s["dur"] * .8)
         if sc == "monster": put(fx, sfx("boom"), st + .4); put(fx, sfx("boom"), st + 1.2)
         if s["huss"]:
             for k in range(N_HUSS):
-                put(fx, sfx("boom") * .5, s["huss_t0"] + k * HUSS_STEP)
+                put(fx, sfx("boom") * .3, s["huss_t0"] + k * HUSS_STEP)
         if sc == "dance": put(fx, sfx("ding"), st + .8)
         if sc == "cta": put(fx, sfx("pop"), st)
     m = music(n) * .5
@@ -240,6 +245,10 @@ def shake_img(img, amp):
 # ---------------------------------------------------------------- escenas
 def render_scene(seg, t, T):
     sc = seg["scene"]; dur = seg["dur"] + .2; u = t / dur
+    if sc == "me" and seg["huss_t0"] and T >= seg["huss_t0"] - .05:
+        sc = "huss"
+    if sc == "me":
+        dur = seg["huss_t0"] - seg["start"] if seg["huss_t0"] else dur; u = min(1, t / dur)
     img = Image.new("RGBA", (W, H)); GY = 1450; amp = 0
 
     if sc == "town":
@@ -330,7 +339,7 @@ def render_scene(seg, t, T):
             avatar(d, 120, 1490 - 40 * hit, 70, CHARS["monster"], T, 0, "dance", "smile", look=1)
         random.seed(k * 7 + 3)
         for j in range(max(0, min(k + 1, N_HUSS))):  # HUSS acumulados en pantalla
-            x = random.randint(250, W - 250); y = random.randint(350, 1000)
+            x = random.randint(250, W - 250); y = random.randint(260, 540)
             sc_ = 1 + (.35 * hit if j == k else 0)
             sticker(img, "HUSS", x, y, 110, random.choice([(255, 40, 90), (40, 160, 255), (130, 40, 220), (20, 20, 20)]),
                     rot=random.randint(-14, 14), scale=sc_)
