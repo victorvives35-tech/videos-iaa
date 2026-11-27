@@ -13,7 +13,6 @@ from make_video import (W, H, FPS, SR, font, sky, block, sticker, outlined_text,
 N_HUSS = 6
 # (texto, escena, huss)  huss: None | "solo" | "crowd"
 SCRIPT = [
-    ("", "huss", "solo", 1),  # gancho: HUSS en el primer segundo
     ("In this town, every kid gets a superpower on their tenth birthday!", "town", None),
     ("My best friend got super speed. He finishes his homework before the teacher even gives it.", "speed", None),
     ("My sister can fly. She only uses it to steal snacks from the top shelf.", "fly", None),
@@ -30,11 +29,13 @@ SCRIPT = [
     ("", "huss", "solo", 6),
     ("The monster stopped... and started dancing!", "dance", None),
     ("The mayor gave me a golden medal! It was chocolate. I ate it.", "medal", None),
-    ("And now, everyone in this town says:", "crowd", "crowd", 6),
-    ("But then, the monster's mom showed up. She was ten times bigger! She looked at me... and said:", "mom", None),
-    ("", "mom_huss", "deep", 3),
-    ("Turns out... she invented the huss.", "mom_smile", None),
-    ("Now I babysit her son every Saturday. And that's why, in this town...", "friends", None),
+    ("The next day, someone knocked on my door. It was the monster.", "knock", None),
+    ("He didn't want to fight. He wanted... huss lessons.", "lesson", None),
+    ("So I taught him. On day one, he said:", "teach", "deep", 1),
+    ("Not bad! On day two:", "teach", "deep", 3),
+    ("And on day three... he said it so loud...", "teach", "deep", 6),
+    ("...that the whole town fell down. Every. Single. House.", "ruins", None),
+    ("Now we all live in tents. But every morning, everyone in this town still says:", "tents", "crowd", 6),
 ]
 
 # ---------------------------------------------------------------- audio
@@ -148,7 +149,7 @@ def build(voice, tmp):
                 words.append((w, cur + d * acc / tot, cur + d * (acc + wt) / tot)); acc += wt
         huss_t0 = None; hits = []
         if huss:
-            huss_t0 = cur + len(audio) / SR + (.6 if txt else 0)
+            huss_t0 = cur + len(audio) / SR + ((.6 if scene == "me" else .12) if txt else 0)
             chant, hits_rel = huss_chant(huss, nh)
             hits = [huss_t0 + h for h in hits_rel]
             pad = np.zeros(int((huss_t0 - cur) * SR) - len(audio), np.float32)
@@ -228,7 +229,7 @@ CHARS = {
     "me":     dict(head=SKIN, torso=(40, 90, 210), legs=(40, 90, 210), hair=None, logo=None, jersey="HUSS", cap=(30, 70, 190)),
     "friend": dict(head=(200, 150, 110), torso=(240, 60, 60), legs=(30, 30, 30), hair=(20, 20, 20), logo=(255, 230, 40)),
     "sister": dict(head=SKIN, torso=(255, 120, 200), legs=(140, 80, 200), hair=(230, 180, 60), logo=None, long_hair=True),
-    "monster": dict(head=(120, 200, 60), torso=(70, 140, 40), legs=(50, 100, 30), hair=None, logo=None, angry=True),
+    "monster": dict(head=(110, 190, 60), torso=(70, 140, 40), legs=(50, 100, 30), hair=None, logo=None, angry=True, beast=True),
     "mom":     dict(head=(150, 220, 80), torso=(230, 90, 170), legs=(60, 110, 40), hair=(60, 30, 80), logo=None, angry=True, long_hair=True),
     "cousin":  dict(head=SKIN, torso=(120, 120, 140), legs=(60, 60, 70), hair=(140, 80, 30), logo=None),
     "teacher": dict(head=(200, 150, 110), torso=(110, 70, 50), legs=(60, 50, 40), hair=(180, 180, 180), logo=None),
@@ -244,6 +245,14 @@ def avatar(d, x, y, s, c, t, walk=0., arms="down", face="smile", look=0, rot_bob
     sw = math.sin(t * 14) * walk
     lw = s * .9
     hip = y - s * 2
+    beast = c.get("beast")
+    if beast:  # cola que se mueve
+        wag = math.sin(t * 5) * s * .6
+        d.polygon([(x + s*.6, hip - s*.8), (x + s*.9, hip - s*.2), (x + s*2.6 + wag, hip + s*.6),
+                   (x + s*3.4 + wag, hip - s*.1)], fill=c["torso"], outline=(20, 50, 15))
+        for k in range(3):
+            px = x + s * (1.4 + k * .6) + wag * (k + 1) / 3; py = hip + s * (.05 + k * .2) - s * .2
+            d.polygon([(px - s*.2, py), (px + s*.2, py), (px, py - s*.45)], fill=(230, 200, 60))
     for side, ph in ((-1, sw), (1, -sw)):
         cx = x + side * lw * .55 + ph * s * .6
         block(d, [cx - lw/2, hip, cx + lw/2, y], c["legs"])
@@ -259,6 +268,20 @@ def avatar(d, x, y, s, c, t, walk=0., arms="down", face="smile", look=0, rot_bob
             o = ph * s * .5
             block(d, [ax - lw/2 + o, ty, ax + lw/2 + o, ty + s*2], c["head"])
     block(d, [x - tw/2, ty, x + tw/2, hip], c["torso"])
+    if beast:
+        block(d, [x - tw*.3, ty + s*.4, x + tw*.3, hip - s*.1], (190, 220, 120), outline=False)  # barriga
+        for k in range(3):
+            d.line([x - tw*.25, ty + s*(.75 + k*.45), x + tw*.25, ty + s*(.75 + k*.45)], fill=(150, 180, 90), width=max(2, int(s*.06)))
+        for side in (-1, 1):  # púas de hombros
+            for k in range(2):
+                bx = x + side * (tw/2 + lw*.2 - k * s*.5)
+                d.polygon([(bx - s*.22, ty + 2), (bx + s*.22, ty + 2), (bx, ty - s*.55)], fill=(230, 200, 60), outline=(90, 70, 20))
+        if arms == "out":  # garras
+            for side in (-1, 1):
+                hx = x + side * (tw/2 + lw/2 + s*1.6 + lw/2)
+                for k in range(3):
+                    cy_ = ty + s*(.2 + k*.28)
+                    d.polygon([(hx, cy_), (hx, cy_ + s*.18), (hx + side*s*.4, cy_ + s*.09)], fill=(250, 250, 240))
     if c.get("jersey"):
         jf = font(max(10, int(s * .62)))
         d.text((x, ty + s * .75), c["jersey"], font=jf, fill=(255, 205, 40), anchor="mm",
@@ -275,6 +298,8 @@ def avatar(d, x, y, s, c, t, walk=0., arms="down", face="smile", look=0, rot_bob
         d.text((x, hy - s*.03), "H", font=font(max(10, int(s * .5))), fill=(255, 205, 40), anchor="mm")
     if c.get("hair"):
         d.rectangle([x - hs/2 - 4, hy - s*.25, x + hs/2 + 4, hy + s*.25], fill=c["hair"])
+    if beast:
+        return beast_face(d, x, hy, hs, s, c, t, face, look)
     ex = s * .2 * look
     for e in (-1, 1):
         d.ellipse([x + e*s*.28 + ex - s*.09, hy + hs*.35, x + e*s*.28 + ex + s*.09, hy + hs*.35 + s*.22], fill=(15, 15, 15))
@@ -289,11 +314,72 @@ def avatar(d, x, y, s, c, t, walk=0., arms="down", face="smile", look=0, rot_bob
         d.ellipse([x - s*.15 + ex, hy + hs*.58, x + s*.15 + ex, hy + hs*.9], fill=(15, 15, 15))
     elif face == "flat":
         d.line([x - s*.25 + ex, hy + hs*.72, x + s*.25 + ex, hy + hs*.72], fill=(15, 15, 15), width=lw2)
-    elif face == "yell":
+    elif face in ("yell", "roar"):
         d.ellipse([x - s*.28 + ex, hy + hs*.52, x + s*.28 + ex, hy + hs*.95], fill=(120, 0, 0), outline=(15, 15, 15), width=lw2)
     elif face == "angry":
         d.arc([x - s*.3 + ex, hy + hs*.65, x + s*.3 + ex, hy + hs*1.0], 200, 340, fill=(15, 15, 15), width=lw2)
     return hy
+
+def beast_face(d, x, hy, hs, s, c, t, face, look):
+    ex = s * .15 * look
+    for side in (-1, 1):  # cuernos
+        bx = x + side * hs * .42
+        d.polygon([(bx - side*s*.05, hy + s*.05), (bx + side*s*.35, hy + s*.05), (bx + side*s*.55, hy - s*.9),
+                   (bx + side*s*.25, hy - s*.35)], fill=(240, 230, 200), outline=(90, 80, 60))
+    for k in (-1, 0, 1):  # púas de la cabeza
+        px = x + k * hs * .2
+        d.polygon([(px - s*.13, hy + 2), (px + s*.13, hy + 2), (px, hy - s*.35 - (s*.12 if k == 0 else 0))], fill=(230, 200, 60), outline=(90, 70, 20))
+    happy = face in ("smile", "laugh")
+    for e in (-1, 1):
+        cx, cy = x + e*s*.3 + ex, hy + hs*.42
+        if happy:
+            d.arc([cx - s*.15, cy - s*.1, cx + s*.15, cy + s*.15], 200, 340, fill=(15, 15, 15), width=max(3, int(s*.08)))
+        else:
+            glow = 1 + .15 * math.sin(t * 9)
+            d.ellipse([cx - s*.2*glow, cy - s*.13*glow, cx + s*.2*glow, cy + s*.13*glow], fill=(255, 120, 0))
+            d.ellipse([cx - s*.13, cy - s*.08, cx + s*.13, cy + s*.08], fill=(255, 30, 20))
+            d.ellipse([cx - s*.04, cy - s*.07, cx + s*.04, cy + s*.07], fill=(20, 0, 0))
+            d.line([x + e*s*.52 + ex, hy + hs*.2, x + e*s*.1 + ex, hy + hs*.34], fill=(15, 15, 15), width=max(3, int(s*.12)))
+    my = hy + hs * .62
+    if face in ("yell", "shock") or face == "roar":
+        mw, mh = s * .42, s * .5
+        d.ellipse([x - mw + ex, my - mh*.2, x + mw + ex, my + mh], fill=(100, 0, 10), outline=(15, 15, 15), width=3)
+        for k in range(5):
+            tx = x - mw*.8 + ex + k * mw * .4
+            d.polygon([(tx - s*.06, my - mh*.05), (tx + s*.06, my - mh*.05), (tx, my + s*.12)], fill=(250, 250, 240))
+    elif happy:
+        d.arc([x - s*.32 + ex, hy + hs*.5, x + s*.32 + ex, hy + hs*.88], 10, 170, fill=(15, 15, 15), width=max(3, int(s*.09)))
+        d.polygon([(x + s*.12 + ex, hy + hs*.8), (x + s*.22 + ex, hy + hs*.8), (x + s*.17 + ex, hy + hs*.92)], fill=(250, 250, 240))
+    else:  # boca dentada
+        d.rectangle([x - s*.38 + ex, my, x + s*.38 + ex, my + s*.2], fill=(40, 0, 0))
+        for k in range(6):
+            tx = x - s*.38 + ex + k * s * .152
+            d.polygon([(tx, my), (tx + s*.152, my), (tx + s*.076, my + s*.13)], fill=(250, 250, 240))
+            d.polygon([(tx, my + s*.2), (tx + s*.152, my + s*.2), (tx + s*.076, my + s*.08)], fill=(250, 250, 240))
+    return hy
+
+def flames(d, x, y, w, t, k=0):
+    for i in range(4):
+        fx = x + (i - 1.5) * w * .25; hgt = w * (.5 + .25 * math.sin(t * 12 + i * 2 + k))
+        d.polygon([(fx - w*.15, y), (fx + w*.15, y), (fx, y - hgt)], fill=(255, 120, 0))
+        d.polygon([(fx - w*.08, y), (fx + w*.08, y), (fx, y - hgt * .6)], fill=(255, 220, 60))
+
+def smoke(img, t, n=7, seed=3):
+    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0)); ld = ImageDraw.Draw(lay)
+    rnd = random.Random(seed)
+    for i in range(n):
+        x0 = rnd.uniform(50, W - 50); sp = rnd.uniform(60, 140); ph = rnd.uniform(0, 10)
+        for j in range(5):
+            yy = 1100 - ((t * sp + ph * 100 + j * 160) % 900)
+            r = 50 + (1100 - yy) * .12
+            ld.ellipse([x0 - r + j * 10, yy - r, x0 + r + j * 10, yy + r], fill=(60, 50, 60, 90))
+    img.alpha_composite(lay)
+
+def school_bus(d, x, y, s, rot=0):
+    block(d, [x - s*1.6, y - s*.6, x + s*1.6, y + s*.6], (250, 200, 30))
+    for k in range(5):
+        d.rectangle([x - s*1.4 + k * s*.58, y - s*.45, x - s*1.0 + k * s*.58, y - s*.05], fill=(170, 220, 255), outline=(30, 30, 30), width=2)
+    d.text((x, y + s*.25), "SCHOOL", font=font(max(10, int(s * .32))), fill=(30, 30, 30), anchor="mm")
 
 # ---------------------------------------------------------------- escenario
 def town(img, t, cam=0., tint=None, ground_y=1450):
@@ -455,14 +541,30 @@ def render_scene(seg, t, T):
 
     elif sc == "monster":
         d = town(img, T, tint="night")
-        mz = 160 * (.6 + .4 * ease(u / .4))
+        for k, (fx, fy) in enumerate([(120, 1150), (420, 1080), (760, 1120), (990, 1060)]):  # casas ardiendo
+            flames(d, fx, fy, 160, T, k)
+        smoke(img, T); d = ImageDraw.Draw(img)
+        mz = 165 * (.5 + .5 * ease(u / .25))
         step = abs(math.sin(t * 3)) * 40
-        avatar(d, W/2 + 60 * math.sin(t * 1.5), GY + 20 - step, mz, CHARS["monster"], T * .4, .6, "out", "angry")
+        mx = W/2 + 60 * math.sin(t * 1.5)
+        eat = .45 < u < .62
+        top = avatar(d, mx, GY + 20 - step, mz, CHARS["monster"], T * .4, .6, "up" if eat else "out", "roar" if (eat or u < .3) else "angry")
+        if u < .55:  # autobús en la mano, luego a la boca
+            bx = mx + mz * 2.4 * (1 - ease(max(0, u - .35) / .2)); by = top + mz * (2.6 - 2.0 * ease(max(0, u - .35) / .2))
+            school_bus(d, bx, by, mz * .55)
+        if eat:
+            sticker(img, "CHOMP", mx, top - 40, 150, (255, 220, 40), fg=(255, 255, 255), rot=-10, scale=1.2 - .2 * ((u - .45) / .17))
+        rnd = random.Random(int(T * 4))
+        for i in range(6):  # escombros
+            rx = rnd.uniform(0, W); ry = (rnd.uniform(0, 600) + t * 900) % 1300
+            d.polygon([(rx, ry), (rx + 30, ry + 10), (rx + 10, ry + 35)], fill=(110, 90, 80))
         for i, x in enumerate([100, 300, 800, 990]):
             avatar(d, (x + (t * 300 if x > W/2 else -t * 300)), GY, 30, npc(i + 20), T, 1.5, "up", "shock")
-        img.alpha_composite(Image.new("RGBA", (W, H), (255, 0, 0, int(50 + 40 * math.sin(t * 10)))))
-        sticker(img, "GIANT MONSTER", W/2, 420, 100, (0, 0, 0), fg=(255, 60, 60), rot=-4)
-        amp = 18
+        img.alpha_composite(Image.new("RGBA", (W, H), (255, 0, 0, int(40 + 35 * math.sin(t * 10)))))
+        sticker(img, "GIANT MONSTER", W/2, 330, 100, (0, 0, 0), fg=(255, 60, 60), rot=-4)
+        if u > .75:
+            sticker(img, "IT WAS SATURDAY", W/2, 520, 80, (40, 200, 90), rot=4)
+        amp = 18 if not eat else 30
 
     elif sc == "stand":
         d = town(img, T, tint="night")
@@ -632,6 +734,101 @@ def render_scene(seg, t, T):
                 d.rectangle([x0, y, x0 + 18, y + 30], fill=rnd.choice([(255, 60, 90), (60, 200, 255), (255, 220, 40), (120, 255, 120)]))
             sticker(img, "HERO", W/2, 450, 160, (255, 210, 40), rot=-5, scale=1 + .05 * math.sin(t * 9))
             if u > .6: sticker(img, "IT WAS CHOCOLATE", W/2, 650, 70, (110, 60, 30), rot=4)
+
+    elif sc == "knock":
+        d = town(img, T)
+        # casa del protagonista en primer plano
+        block(d, [200, 900, 760, 1450], (120, 170, 230))
+        d.polygon([(170, 900), (480, 650), (790, 900)], fill=(150, 60, 50), outline=(20, 20, 30))
+        d.rectangle([420, 1150, 540, 1450], fill=(110, 70, 40), outline=(20, 20, 30), width=5)
+        knock = u < .5 and int(t * 6) % 2 == 0
+        mx = 930
+        avatar(d, mx, GY + 30, 120, CHARS["monster"], T, 0, "out" if knock else "down", "flat", look=-1)
+        if u < .5 and int(t * 6) % 2 == 0:
+            sticker(img, "KNOCK", 560, 1000, 80, (255, 255, 255), fg=(40, 40, 40), rot=-8)
+        if u > .5:
+            avatar(d, 480, GY, 40, CHARS["me"], T, 0, "down", "shock", look=1)
+            sticker(img, "?!", 480, 880, 120, (255, 220, 40), rot=6)
+
+    elif sc == "lesson":
+        sky(img, (250, 240, 220), (230, 215, 190)); d = ImageDraw.Draw(img)
+        block(d, [90, 280, W - 90, 700], (40, 80, 60))
+        d.text((W/2, 400), "HUSS SCHOOL", font=font(110), fill=(255, 255, 255), anchor="mm")
+        d.text((W/2, 560), "LESSON 1", font=font(70), fill=(255, 220, 120), anchor="mm")
+        d.rectangle([0, 1450, W, H], fill=(170, 120, 80))
+        avatar(d, 270, GY, 60, CHARS["me"], T, 0, "out", "smile", look=1)
+        top = avatar(d, 760, GY + 20, 110, CHARS["monster"], T, 0, "down", "smile", look=-1)
+        block(d, [600, top + 300, 760, top + 400], (255, 255, 255))  # cuaderno
+        if u > .5: sticker(img, "STUDENT", 760, 860, 90, (255, 120, 200), rot=5)
+
+    elif sc == "teach":
+        k, hit = huss_hit(seg, T) if seg["huss_t0"] else (-1, 0)
+        day = seg["nh"]
+        big = day >= 6
+        d = town(img, T)
+        if big and k >= 0:  # las casas se derrumban con cada HUSS
+            fall = min(1, (k + 1) / 6 + .1 * hit)
+            lay = Image.new("RGBA", (W, H)); town(lay, T)
+            houses = lay.crop((0, 760, W, 1450))
+            nh_ = max(20, int(690 * (1 - .9 * fall)))
+            sky(img, (90, 170, 255), (200, 235, 255))
+            img.paste(lay.crop((0, 1450, W, H)), (0, 1450))
+            img.alpha_composite(houses.resize((W, nh_)), (0, 1450 - nh_))
+            d = ImageDraw.Draw(img)
+            rnd = random.Random(k)
+            for j in range(int(25 * fall)):  # escombros
+                bx = rnd.uniform(0, W); by = 1450 - rnd.uniform(0, 80)
+                d.rectangle([bx, by - 35, bx + rnd.uniform(40, 90), by], fill=rnd.choice([(230, 120, 90), (120, 170, 230), (250, 210, 110), (150, 60, 50)]), outline=(30, 30, 30))
+            if hit > .3: smoke(img, T, 3, k); d = ImageDraw.Draw(img)
+            img.alpha_composite(Image.new("RGBA", (W, H), (255, 255, 255, int(100 * hit))))
+            d = ImageDraw.Draw(img)
+        sticker(img, f"DAY {[0, 1, 0, 2, 0, 0, 3][day]}", W/2, 300, 100, (30, 30, 30), rot=-4)
+        z = 1 + .12 * hit * (2 if big else 1)
+        avatar(d, 220 - (60 * (k + 1) if big and k >= 0 else 0), GY, 50, CHARS["me"], T, 0, "up" if hit > .2 else "out",
+               "shock" if big and k >= 0 else "smile", look=1)
+        avatar(d, 720, GY + 20, 120 * z, CHARS["monster"], T, 0, "out", "roar" if hit > .2 else "smile", look=-1)
+        if k >= 0 and k < seg["nh"]:
+            sticker(img, "HUSS", W/2 + (k % 3 - 1) * 250, 520 + (k // 3) * 170, 110 + (60 if big else 0),
+                    (70, 140, 40), rot=-8 + 8 * (k % 3), scale=1 + .4 * hit)
+        amp = int((50 if big else 20) * hit)
+
+    elif sc == "ruins":
+        sky(img, (200, 200, 210), (240, 230, 220)); d = ImageDraw.Draw(img)
+        d.rectangle([0, 1450, W, H], fill=(90, 90, 100))
+        rnd = random.Random(4)
+        for i in range(-1, 7):  # escombros donde estaban las casas
+            x = i * 180 + 40
+            for j in range(rnd.randint(4, 8)):
+                bx = x + rnd.randint(-40, 100); by = 1450 - rnd.randint(0, 120)
+                d.rectangle([bx, by - 40, bx + rnd.randint(50, 110), by], fill=rnd.choice([(230, 120, 90), (120, 170, 230), (250, 210, 110), (150, 60, 50)]), outline=(30, 30, 30))
+        smoke(img, T, 4, 7); d = ImageDraw.Draw(img)
+        for i, x in enumerate([130, 330, 780, 980]):
+            avatar(d, x, GY, 38, npc(i + 90), T, 0, "down", "flat", look=1 if x < W/2 else -1)
+        avatar(d, W/2 - 90, GY, 55, CHARS["me"], T, 0, "down", "flat")
+        avatar(d, W/2 + 200, GY + 20, 100, CHARS["monster"], T, 0, "down", "smile", look=-1)
+        if u > .45: sticker(img, "OOPS", W/2 + 200, 700, 120, (70, 140, 40), rot=6)
+        if u > .65: sticker(img, "0 HOUSES LEFT", W/2, 380, 90, (220, 30, 30), rot=-4)
+
+    elif sc == "tents":
+        k, hit = huss_hit(seg, T) if seg["huss_t0"] else (-1, 0)
+        sky(img, (255, 190, 120), (255, 230, 170)); d = ImageDraw.Draw(img)
+        d.ellipse([W/2 - 120, 500, W/2 + 120, 740], fill=(255, 230, 120))
+        d.rectangle([0, 1400, W, H], fill=(120, 190, 90))
+        cols = [(230, 80, 80), (80, 140, 230), (250, 200, 60), (150, 90, 200), (60, 180, 120)]
+        for i in range(6):
+            x = i * 190 + 30
+            d.polygon([(x, 1400), (x + 90, 1240), (x + 180, 1400)], fill=cols[i % 5], outline=(30, 30, 30))
+            d.polygon([(x + 70, 1400), (x + 90, 1300), (x + 110, 1400)], fill=(40, 30, 30))
+        jump = 40 * hit
+        for j, x in enumerate(range(70, W, 150)):
+            avatar(d, x, 1600 - jump, 38, CHARS["me"] if j == 3 else npc(j + 100), T, 0, "up" if hit > .2 else "down",
+                   "yell" if hit > .2 else "smile")
+        avatar(d, 930, 1640 - jump, 75, CHARS["monster"], T, 0, "up" if hit > .2 else "down", "roar" if hit > .2 else "smile", look=-1)
+        if k >= 0 and k < seg["nh"]:
+            for j in range(k + 1):
+                sticker(img, "HUSS", 180 + (j * 157) % 700, 300 + (j % 3) * 120, 100, cols[j % 5], rot=-10 + 7 * j,
+                        scale=1 + (.35 * hit if j == k else 0))
+        amp = int(25 * hit)
 
     elif sc == "neighbors":
         d = town(img, T)

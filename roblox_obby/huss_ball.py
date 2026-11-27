@@ -10,7 +10,6 @@ import in_this_town as m
 from in_this_town import (W, H, CHARS, npc, avatar, town, sky, block, sticker, font, ease, shake_img, huss_hit)
 
 SCRIPT = [
-    ("", "huss", "solo", 1),  # gancho: HUSS en el primer segundo
     ("In this town, every time you say huss... something magical happens!", "intro", None),
     ("The baker said:", "baker", "solo", 1),
     ("And all his bread turned into gold! Now nobody can eat it.", "baker_gold", None),
