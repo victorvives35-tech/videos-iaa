@@ -17,7 +17,7 @@ ME = CHARS["me"]
 SCRIPT = [
     # 1 (0-5 s) gancho
     ("In this town, I opened my front door... and saw THIS.", "door", None),
-    ("Hundreds of me. All staring at me.", "stare", None),
+    ("Another me. And another. And another.", "stare", None),
     ("Same face. Same hat. Same amazing jersey.", "stare_b", None),
     # 2 (5-15 s) todos son él
     ("The shopkeeper? Me. The police officer? Also me.", "jobs", None),
@@ -46,7 +46,7 @@ SCRIPT = [
     ("The real me waved goodbye... from inside the mirror.", "tag_c", None),
 ]
 
-VAR = {"stare_b": "stare", "control_b": "control", "chase_c": "chase", "mirror_b": "mirror", "tag_c": "tag_c"}
+VAR = {"control_b": "control", "chase_c": "chase", "mirror_b": "mirror", "tag_c": "tag_c"}
 
 RED = (255, 30, 30)
 
@@ -82,11 +82,12 @@ def clone(d, x, y, s, t, walk=0., arms="down", face="flat", look=0, evil=False, 
 def crowd(d, t, rows=8, y0=1000, y1=1880, arms_fn=None, face="flat", look_fn=None, evil_fn=None, walk=0., skip=None):
     """Cientos de clones idénticos en perspectiva (filas del fondo pequeñas)."""
     n = 0
+    rows = min(rows, 4); y0 = max(y0, 1200)
     for r in range(rows):
         k = r / max(1, rows - 1)
-        s = 9 + 30 * k ** 1.4
-        y = y0 + (y1 - y0) * k ** 1.2
-        sp = s * 3.3
+        s = 20 + 26 * k
+        y = y0 + (y1 - y0) * k
+        sp = s * 4.4
         off = (r % 2) * sp / 2
         x = -sp + off
         while x < W + sp:
@@ -110,7 +111,7 @@ def camera(img, key, u):
     return img.crop((int(l), int(tp), int(l + cw), int(tp + ch))).resize((W, H), Image.BILINEAR)
 
 CAMS = {
-    "door": (2.6, 1.0, (.5, .55), (.5, .5)), "stare": (1.0, 1.3, (.5, .5), (.5, .62)),
+    "door": (1.0, 1.15, (.5, .55), (.55, .55)), "stare": (1.25, 1.0, (.5, .62), (.5, .55)),
     "jobs": (1.2, 1.0, (.35, .55), (.65, .55)), "jobs_b": (1.0, 1.3, (.5, .55), (.5, .5)),
     "copy": (1.15, 1.0, (.5, .6), (.5, .5)), "dance": (1.0, 1.2, (.3, .55), (.7, .55)),
     "huss_me": (1.0, 1.25, (.5, .55), (.5, .5)), "huss_all": (1.25, 1.0, (.5, .62), (.5, .5)),
@@ -118,7 +119,7 @@ CAMS = {
     "control": (1.0, 1.0, (.5, .5), (.5, .5)), "chase": (1.15, 1.15, (.4, .6), (.6, .6)),
     "chase_b": (1.1, 1.3, (.5, .55), (.5, .6)), "home": (1.0, 1.25, (.5, .55), (.45, .6)),
     "mirror": (1.0, 1.2, (.4, .5), (.55, .5)), "tag": (1.0, 1.0, (.5, .5), (.5, .5)),
-    "stare_b": (1.6, 1.25, (.5, .7), (.5, .62)), "bread": (1.0, 1.3, (.5, .55), (.5, .5)),
+    "stare_b": (1.0, 1.05, (.5, .55), (.5, .55)), "bread": (1.0, 1.3, (.5, .55), (.5, .5)),
     "flip": (1.2, 1.0, (.5, .6), (.5, .5)), "control_b": (1.0, 1.4, (.5, .55), (.5, .6)),
     "chase_c": (1.2, 1.0, (.5, .5), (.5, .55)), "mirror_b": (1.3, 1.9, (.68, .55), (.7, .56)),
     "tag_c": (1.0, 1.25, (.5, .5), (.6, .45)),
@@ -156,31 +157,63 @@ def scene(seg, t, T):
     def stk(*a, **k): later.append((a, k))
     k, hit = huss_hit(seg, T) if seg.get("hits") else (-1, 0)
 
-    if sc in ("door", "stare"):
+    if sc == "door":
+        # interior: Huss Boy abre la puerta... y al otro lado hay OTRO Huss Boy, cara a cara
+        sky(img, (240, 225, 200), (225, 205, 175)); d = ImageDraw.Draw(img)
+        for yy in range(0, H, 60):
+            d.line([0, yy, W, yy], fill=(230, 212, 185), width=3)
+        d.rectangle([0, 1600, W, H], fill=(150, 105, 70))
+        open_ = ease(min(1, max(0, (u - .3) / .15)))
+        dx0, dx1, dy0, dy1 = 460, 1000, 450, 1600
+        # exterior por el hueco de la puerta
+        out = Image.new("RGBA", (W, H)); town(out, T)
+        od = ImageDraw.Draw(out)
+        if open_ > 0:
+            clone(od, 730, 1760, 110, T, 0, "down", "flat", look=-1)
+        hole = Image.new("L", (W, H), 0); ImageDraw.Draw(hole).rectangle([dx0, dy0, dx1, dy1], fill=255)
+        img.paste(out, (0, 0), hole); d = ImageDraw.Draw(img)
+        d.rectangle([dx0 - 30, dy0 - 30, dx1 + 30, dy0], fill=(110, 70, 40))
+        d.rectangle([dx0 - 30, dy0, dx0, dy1], fill=(110, 70, 40)); d.rectangle([dx1, dy0, dx1 + 30, dy1], fill=(110, 70, 40))
+        # hoja de la puerta que se abre
+        dw = (dx1 - dx0) * (1 - open_)
+        if dw > 4:
+            d.rectangle([dx1 - dw, dy0, dx1, dy1], fill=(140, 90, 50), outline=(70, 40, 20), width=6)
+            d.ellipse([dx1 - dw + 20, 1020, dx1 - dw + 50, 1050], fill=(240, 200, 60))
+        # Huss Boy recién levantado (bostezo -> susto)
+        shock = open_ > .5
+        clone(d, 250, 1800, 125, T, 0, "up" if shock else "out", "shock" if shock else ("yell" if u < .25 else "flat"), look=1)
+        if t < 2.0:
+            p = min(1, t / .2)
+            stk("EVERYONE", W/2, 330, 150, (40, 90, 210), rot=-6, scale=.5 + .5 * p + .05 * math.sin(T * 14))
+            stk("LOOKS THE SAME", W/2, 520, 110, (255, 210, 40), fg=(40, 90, 210), rot=4, scale=.5 + .5 * p)
+        elif shock:
+            stk("?!", 730, 330, 220, (220, 30, 30), rot=8, scale=1 + .1 * math.sin(T * 12))
+            amp = int(14 * max(0, 1 - (u - .45) * 3))
+
+    elif sc == "stare":
+        # van apareciendo, uno a uno, en fila
         d = town(img, T)
-        if sc == "door":
-            # cientos de clones mirando fijamente, parpadeando todos a la vez
-            crowd(d, T, rows=9, look_fn=lambda x, r: max(-1, min(1, (W/2 - x) / 400)))
-            # marco de la puerta en primer plano
-            d = ImageDraw.Draw(img)
-            d.rectangle([0, 0, 90, H], fill=(110, 70, 40)); d.rectangle([W - 90, 0, W, H], fill=(110, 70, 40))
-            d.rectangle([0, 0, W, 80], fill=(110, 70, 40))
-            if t < 2.2:
-                p = min(1, t / .2)
-                stk("EVERYONE", W/2, 430, 150, (40, 90, 210), rot=-6, scale=.5 + .5 * p + .05 * math.sin(T * 14))
-                stk("LOOKS THE SAME", W/2, 620, 110, (255, 210, 40), fg=(40, 90, 210), rot=4, scale=.5 + .5 * p)
-            if u > .8:
-                stk("?!?!", W/2, 450, 180, (220, 30, 30), rot=8)
-                amp = 12
-        else:
-            # ola sincronizada de cientos de clones
-            crowd(d, T, rows=10, arms_fn=lambda x, r: "up" if math.sin(T * 6 - x * .012) > .3 else "down", face="smile")
-            if full == "stare_b":
-                third = min(2, int(u * 3))
-                stk(["SAME FACE", "SAME HAT", "SAME JERSEY"][third], W/2, 380, 110, [(40, 90, 210), (30, 70, 190), (255, 210, 40)][third],
-                    fg=(255, 255, 255), rot=-4 + 4 * third)
-            else:
-                stk("HUNDREDS OF ME", W/2, 380, 110, (40, 90, 210), rot=-4, scale=1 + .05 * math.sin(T * 10))
+        n_show = min(5, 1 + int(u * 5.5))
+        xs = [W/2, W/2 - 300, W/2 + 300, W/2 - 600 + 160, W/2 + 600 - 160]
+        order = sorted(range(n_show), key=lambda i: -abs(xs[i] - W/2))
+        for i in order:
+            born = i / 5.5 * dur
+            pop = min(1, max(0, (t - born) / .15))
+            sz = (105 if i == 0 else 78) * (.6 + .4 * pop) * (1 + .15 * max(0, 1 - (t - born) / .25))
+            clone(d, xs[i], 1800 if i == 0 else 1600, sz, T, 0, "down", "flat", look=0)
+        stk(["ANOTHER ME", "AND ANOTHER", "AND ANOTHER"][min(2, int(u * 3))], W/2, 380, 110, (40, 90, 210), rot=-4 + 4 * int(u * 3),
+            scale=1 + .05 * math.sin(T * 10))
+
+    elif sc == "stare_b":
+        # primeros planos: misma cara, mismo gorro, misma camiseta
+        d = town(img, T)
+        third = min(2, int(u * 3))
+        for i, x in enumerate([W/2 - 330, W/2 + 330]):
+            clone(d, x, 1500, 50, T, 0, "down", "flat", look=1 if i == 0 else -1)
+        clone(d, W/2, 1950, 140 + third * 15, T, 0, "down", "smile")
+        stk(["SAME FACE", "SAME HAT", "SAME JERSEY"][third], W/2, 380, 110, [(40, 90, 210), (30, 70, 190), (255, 210, 40)][third],
+            fg=(255, 255, 255), rot=-4 + 4 * third)
+        if (u * 3) % 1 < .06: tint(img, (255, 255, 255), 150)
 
     elif sc in ("jobs", "jobs_b"):
         d = town(img, T)
@@ -491,7 +524,11 @@ def mix_audio(segs, total, out_wav):
         s_ = int(t * SR); e = min(n, s_ + len(x))
         if e > s_: fx[s_:e] += x[:e - s_]
     by = {s["scene"]: s for s in segs}
-    s0 = by["door"]; put(sting() * .8, s0["start"] + .05); put(m.sfx("pop"), s0["start"] + s0["dur"] * .8)
+    s0 = by["door"]; put(m.sfx("whoosh") * .6, s0["start"]); put(sting() * .9, s0["start"] + (s0["dur"] + .2) * .38)
+    s1 = by["stare"]
+    for i in range(5): put(m.sfx("pop") * .9, s1["start"] + i / 5.5 * (s1["dur"] + .2))
+    s2 = by["stare_b"]
+    for i in range(3): put(m.sfx("pop") * .7, s2["start"] + i * (s2["dur"] + .2) / 3)
     for key in ("jobs", "jobs_b"):
         s = by[key]; put(m.sfx("pop") * .8, s["start"]); put(m.sfx("pop") * .8, s["start"] + s["dur"] / 2)
     s = by["jobs_b"]; put(m.sfx("boing") * .8, s["start"] + s["dur"] * .76)
@@ -528,8 +565,8 @@ ORIG_BUILD = m.build
 def build(voice, tmp):
     segs, total = ORIG_BUILD(voice, tmp)
     print(f"duración natural: {total:.2f}s")
-    if total > TARGET:
-        raise SystemExit(f"El guion dura {total:.1f}s (> {TARGET}s): acórtalo.")
+    if total >= TARGET:  # mínimo 1 minuto; si dura más, se deja tal cual
+        return segs, total
     extra = TARGET - total; n = len(segs)
     for i, sg in enumerate(segs):  # reparte el tiempo sobrante entre las pausas
         off = extra * i / n
