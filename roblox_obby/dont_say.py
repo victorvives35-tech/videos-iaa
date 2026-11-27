@@ -19,17 +19,17 @@ HOST = dict(head=(255, 205, 160), torso=(30, 30, 40), legs=(30, 30, 40), hair=(2
 CLOWN = dict(head=(255, 240, 240), torso=(255, 220, 40), legs=(60, 140, 230), hair=None, logo=(255, 40, 40))
 
 SCRIPT = [
-    ("In this town, there's a TV show called Don't Say Huss.", "intro", None),
-    ("The rules are simple. Thirty days. If you say huss... you're out.", "rules", None),
+    ("In this town, there's a TV show called Don't Say [HUSS]", "intro", None),
+    ("The rules are simple. Thirty days. If you say [HUSS] you're out.", "rules", None),
     ("The winner gets ten million dollars.", "prize", None),
-    ("One thousand people signed up. Including me. The guy who says huss every five seconds.", "signup", None),
+    ("One thousand people signed up. Including me. The guy who says [HUSS] every five seconds.", "signup", None),
     ("Day one. Two hundred people were out before breakfast.", "elim", None),
     ("There were cameras everywhere. In the bakery. In the bathroom. Inside my cereal.", "cams", None),
     ("Day five. A clown came to town and asked everyone: what's your favorite word?", "clown", None),
     ("Three hundred people said it.", "elim_b", None),
     ("Day twelve. I almost said it in my sleep. So I taped my mouth shut.", "tape", None),
     ("Day twenty. Only ten people left.", "elim_c", None),
-    ("Then my best friend sneezed. It sounded a little bit like huss.", "sneeze", None),
+    ("Then my best friend sneezed. It sounded a little bit like [HUSS]", "sneeze", None),
     ("They kicked him out anyway.", "sneeze_b", None),
     ("Day twenty nine. Only two people left. Me... and my grandma.", "final_two", None),
     ("Day thirty. The last minute.", "countdown", None),
