@@ -198,161 +198,301 @@ def s_title(c, x):
     k3 = out_back(seg(t, .9, 1.25))
     c.save(); c.translate(W / 2, 1300); c.scale(k3, k3)
     rrect(c, -330, -55, 660, 110, 55, P(hexc("#e0262f")))
-    text(c, "CAPÍTULO 1 · NO LLEGARÁS A NADA", 0, 15, 40, hexc("#ffffff"), weight=800)
+    text(c, "CAPÍTULO 1 · EL TRATO", 0, 15, 40, hexc("#ffffff"), weight=800)
     c.restore()
     c.restore()
     flash(c, 1 - seg(t, 0, .35))
     flash(c, seg(t, d - .25, d), "#000000")
 
 # ------------------------------------------------------------------ 3. COCINA
-def kitchen_bg(c, t, x):
+def kitchen_bg(c, t, x, dim=0.0):
     c.drawRect(skia.Rect.MakeWH(W, H), P(shader=lin(0, 0, 0, H, [hexc("#3d2b22"), hexc("#5a3f30"), hexc("#2a1d17")])))
-    # azulejos
     tp = P(hexc("#ffffff", .04), stroke=2)
     for yy in range(500, 1300, 90): c.drawLine(0, yy, W, yy, tp)
     for xx in range(0, W, 90): c.drawLine(xx, 500, xx, 1300, tp)
-    # ventana con tormenta
-    lt = x.sfx_t("thunder")
-    li = max(pulse(t, lt, .12), pulse(t, lt + .35, .1) * .7) if lt is not None else 0
+    li = 0.0
     rrect(c, 640, 260, 360, 420, 16, P(hexc("#1a1210")))
-    rrect(c, 660, 280, 320, 380, 8, P(shader=lin(0, 280, 0, 660, [mix_hex("#0d1430", "#e9efff", li), mix_hex("#1f2b55", "#aebcff", li)])))
-    if li > .2:
-        c.drawPath(path([(820, 280), (790, 400), (830, 410), (780, 560), (840, 430), (805, 420), (840, 280)]), P(hexc("#ffffff", li)))
-    c.save(); c.clipRect(skia.Rect.MakeXYWH(660, 280, 320, 380)); RAIN.rain(c, t, (660, 280, 320, 380), .5); c.restore()
+    rrect(c, 660, 280, 320, 380, 8, P(shader=lin(0, 280, 0, 660, [hexc("#0d1430"), hexc("#1f2b55")])))
+    c.save(); c.clipRect(skia.Rect.MakeXYWH(660, 280, 320, 380)); RAIN.rain(c, t, (660, 280, 320, 380), .45); c.restore()
     c.drawLine(820, 280, 820, 660, P(hexc("#1a1210"), stroke=14)); c.drawLine(660, 470, 980, 470, P(hexc("#1a1210"), stroke=14))
-    # armarios
     for i in range(3):
         rrect(c, 40 + i * 180, 230, 165, 280, 10, P(hexc("#6b4a37"))); rrect(c, 40 + i * 180, 230, 165, 280, 10, P(hexc("#000000", .25), stroke=4))
         rrect(c, 40 + i * 180 + 140, 360, 10, 50, 5, P(hexc("#c9a46a")))
-    # lámpara colgante que oscila
-    sw = math.sin(t * 1.4) * 6
+    # reloj de pared
+    oval(c, 560, 640, 62, 62, P(hexc("#efe6d6"))); oval(c, 560, 640, 62, 62, P(hexc("#3a2a20"), stroke=8))
+    ang = t * 6
+    c.drawLine(560, 640, 560 + 40 * math.sin(math.radians(ang)), 640 - 40 * math.cos(math.radians(ang)), P(hexc("#c0392b"), stroke=3))
+    c.drawLine(560, 640, 590, 625, P(hexc("#222222"), stroke=6)); c.drawLine(560, 640, 556, 600, P(hexc("#222222"), stroke=5))
+    sw = math.sin(t * 1.4) * 5
     c.save(); c.translate(540, 0); c.rotate(sw)
     c.drawLine(0, 0, 0, 330, P(hexc("#111111"), stroke=5))
     c.drawPath(path([(-90, 420), (-40, 330), (40, 330), (90, 420)]), P(hexc("#e2b04a")))
     oval(c, 0, 420, 90, 18, P(hexc("#fff2c4")))
-    c.drawPath(path([(-90, 420), (90, 420), (520, 1900), (-520, 1900)]), P(shader=lin(0, 420, 0, 1900, [hexc("#ffdf9e", .22), hexc("#ffdf9e", 0)]), blur=25, blend=skia.BlendMode.kScreen))
+    c.drawPath(path([(-90, 420), (90, 420), (520, 1900), (-520, 1900)]), P(shader=lin(0, 420, 0, 1900, [hexc("#ffdf9e", .22 * (1 - dim)), hexc("#ffdf9e", 0)]), blur=25, blend=skia.BlendMode.kScreen))
     c.restore()
-    return li
 
 def table(c):
-    p = skia.Path(); p.moveTo(-40, 1330); p.lineTo(W + 40, 1330); p.lineTo(W + 40, H + 40); p.lineTo(-40, H + 40); p.close()
+    p = skia.Path(); p.moveTo(-200, 1330); p.lineTo(W + 200, 1330); p.lineTo(W + 200, H + 400); p.lineTo(-200, H + 400); p.close()
     c.drawPath(p, P(shader=lin(0, 1330, 0, H, [hexc("#8a5a35"), hexc("#5a3820")])))
-    c.drawLine(-40, 1332, W + 40, 1332, P(hexc("#c08a58"), stroke=8))
-    for yy in (1420, 1560, 1730): c.drawLine(0, yy, W, yy + 8, P(hexc("#000000", .12), stroke=3))
-    # taza y plato
-    oval(c, 880, 1420, 90, 22, P(hexc("#e8e2d6"))); rrect(c, 840, 1350, 80, 70, 12, P(hexc("#c94c3c")))
+    c.drawLine(-200, 1332, W + 200, 1332, P(hexc("#c08a58"), stroke=8))
+    for yy in (1420, 1560, 1730): c.drawLine(-200, yy, W + 200, yy + 8, P(hexc("#000000", .12), stroke=3))
+    oval(c, 900, 1420, 90, 22, P(hexc("#e8e2d6"))); rrect(c, 860, 1350, 80, 70, 12, P(hexc("#c94c3c")))
+    # boletín sobre la mesa
+    c.save(); c.translate(540, 1420); c.scale(1, .35); c.rotate(-8)
+    rrect(c, -170, -210, 340, 420, 10, P(hexc("#fbf8ef"))); rect(c, -170, -210, 340, 70, P(hexc("#2c4a7a")))
+    c.restore()
 
-def report_card(c, t, t0, t1):
-    k = out_back(seg(t, t0, t0 + .45)); ko = in_cubic(seg(t, t1 - .35, t1))
+def report_insert(c, t, t0, t1, red_t):
+    """primer plano del boletín deslizándose sobre la mesa"""
+    k = out_cubic(seg(t, t0, t0 + .8)); ko = in_cubic(seg(t, t1 - .3, t1))
     if k <= 0 or ko >= 1: return
-    c.save(); c.translate(W / 2, 760 + 1400 * ko + 600 * (1 - k)); c.rotate(-6 + 4 * k)
-    rrect(c, -330, -380, 660, 760, 18, P(hexc("#000000", .4), blur=30))
-    rrect(c, -330, -400, 660, 760, 18, P(hexc("#fbf8ef")))
-    rect(c, -330, -400, 660, 120, P(hexc("#2c4a7a")))
-    text(c, "BOLETÍN DE NOTAS", 0, -322, 46, hexc("#ffffff"))
-    text(c, "Alumno: Leo M. · 4º ESO", 0, -220, 34, hexc("#444444"), weight=600)
-    rows = [("Matemáticas", "3"), ("Lengua", "4"), ("Inglés", "4"), ("Historia", "2"), ("Ed. Física", "8")]
+    c.save()
+    c.saveLayerAlpha(None, int(255 * (1 - ko)))
+    # mesa en primer plano (desenfocada en los bordes)
+    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=lin(0, 0, 0, H, [hexc("#7a4e2d"), hexc("#4e301b")])))
+    for yy in range(0, H, 140): c.drawLine(0, yy + 30, W, yy + 60, P(hexc("#000000", .10), stroke=4))
+    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=rad(W / 2, 900, 1000, [hexc("#ffdf9e", .25), hexc("#000000", 0)])))
+    c.translate(W / 2 - 900 * (1 - k), 800); c.rotate(-8 + 6 * k); sc_ = 1.02 + .05 * seg(t, t0, t1); c.scale(sc_, sc_)
+    rrect(c, -360, -440, 720, 900, 18, P(hexc("#000000", .45), blur=35))
+    rrect(c, -360, -470, 720, 900, 18, P(hexc("#fbf8ef")))
+    rect(c, -360, -470, 720, 130, P(hexc("#2c4a7a")))
+    text(c, "BOLETÍN DE NOTAS", 0, -385, 50, hexc("#ffffff"))
+    text(c, "Leo Martín · 4º ESO · 2ª evaluación", 0, -280, 34, hexc("#555555"), weight=600)
+    rows = [("Matemáticas", "3"), ("Lengua", "4"), ("Inglés", "4"), ("Historia", "2"), ("Ed. Física", "9")]
     for i, (a, n) in enumerate(rows):
-        y = -130 + i * 95
-        c.drawLine(-280, y + 30, 280, y + 30, P(hexc("#000000", .1), stroke=2))
-        text(c, a, -280, y, 44, hexc("#222222"), weight=700, align="left")
-        col = "#d81e2a" if int(n) < 5 else "#1f9a4a"
-        text(c, n, 240, y + 4, 64, hexc(col), align="center")
+        y = -180 + i * 105
+        c.drawLine(-310, y + 34, 310, y + 34, P(hexc("#000000", .1), stroke=2))
+        text(c, a, -310, y, 48, hexc("#222222"), weight=700, align="left")
+        text(c, n, 260, y + 4, 70, hexc("#d81e2a" if int(n) < 5 else "#1f9a4a"))
         if a == "Historia":
-            r = seg(t, t0 + .6, t0 + 1.2)
+            r = seg(t, red_t, red_t + .5)
             if r > 0:
-                arc = skia.Path(); arc.addArc(skia.Rect.MakeXYWH(185, y - 72, 110, 100), -90, 360 * r)
-                c.drawPath(arc, P(hexc("#d81e2a"), stroke=8))
+                arc = skia.Path(); arc.addArc(skia.Rect.MakeXYWH(195, y - 78, 130, 112), -90, 360 * r)
+                c.drawPath(arc, P(hexc("#d81e2a"), stroke=9))
+    text(c, "Observaciones: no muestra interés.", -310, 400, 32, hexc("#d81e2a"), weight=600, align="left", fam="DejaVu Serif")
+    c.restore(); c.restore()
+
+def handshake_insert(c, t, t0, t1):
+    k = out_cubic(seg(t, t0, t0 + .28)); ko = seg(t, t1 - .2, t1)
+    if t < t0 or ko >= 1: return
+    c.saveLayerAlpha(None, int(255 * (1 - ko)))
+    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=rad(W / 2, 900, 1100, [hexc("#5a3f30"), hexc("#1a100c")])))
+    rays(c, W / 2, 900, t, "#ffd27a", .12 * k, 14)
+    sh = pulse(t, t0 + .28, .2)
+    c.save(); c.translate(math.sin(t * 90) * 14 * sh, 0)
+    gap = 260 * (1 - k)
+    # brazo de papá (camisa azul) desde la izquierda, de Leo (sudadera naranja) desde la derecha
+    for side, col, col2, skin in ((-1, "#3b6fb6", "#294f86", "#e8b48e"), (1, "#ff7a2f", "#d9551a", "#f2c29b")):
+        x0 = W / 2 + side * (70 + gap)
+        c.drawPath(path([(x0 + side * 40, 860), (x0 + side * 700, 780), (x0 + side * 700, 1080), (x0 + side * 40, 1000)]),
+                   P(shader=lin(0, 780, 0, 1080, [hexc(col), hexc(col2)])))
+        rrect(c, x0 + (side - 1) * 55 + side * 30, 850, 110, 160, 30, P(hexc(col2)))
+        oval(c, x0 - side * 30, 930, 120, 82, P(hexc(skin)))
+        for f in range(4):
+            oval(c, x0 - side * (120 - f * 4), 880 + f * 32, 34, 18, P(hexc(skin)))
+            oval(c, x0 - side * (120 - f * 4), 880 + f * 32, 34, 18, P(hexc("#000000", .12), stroke=2))
+    c.restore()
+    if t > t0 + .25:
+        ks = 1 + 1.6 * (1 - out_cubic(seg(t, t0 + .25, t0 + .4)))
+        c.save(); c.translate(W / 2, 520); c.rotate(-6); c.scale(ks, ks)
+        rrect(c, -300, -110, 600, 220, 30, P(hexc("#ffd400", .95)))
+        rrect(c, -300, -110, 600, 220, 30, P(hexc("#1a1200"), stroke=10))
+        text(c, "TRATO", 0, 55, 160, hexc("#1a1200"), spacing=8)
+        c.restore()
+        text(c, "30 DÍAS · 1.000.000 €", W / 2, 1300, 64, hexc("#ffffff"), stroke=10, alpha=seg(t, t0 + .5, t0 + .8))
+    flash(c, pulse(t, t0 + .25, .15) * .8, "#fff3c4")
     c.restore()
 
 def s_kitchen(c, x):
     t, d = x.t, x.d
-    L = [x.l(i) for i in range(5)]  # papá, mamá, papá, leo, papá
-    PAPA, MAMA, LEO = (300, 900), (790, 930), (540, 1150)
-    keys = [(0, 540, 1000, 1.0), (L[0]["s"] + 1.6, 330, 1000, 1.45), (L[1]["s"], 760, 1020, 1.45),
-            (L[2]["s"], 330, 1000, 1.5), (L[3]["s"] - .2, 540, 1180, 1.65), (L[4]["s"], 400, 1000, 1.3),
-            (L[4]["e"] + .1, 540, 1050, 1.05)]
-    cx, cy, z = shots(t, keys)
-    li = x.sfx_t("thunder")
-    shake = pulse(t, li, .3) * .8 if li else 0
-    c.save(); camera(c, cx, cy, z, shake=shake, T=x.T)
-    lt = kitchen_bg(c, t, x)
-    ang = "angry"
-    character(c, "PAPA", PAPA[0], PAPA[1], 1.12, emo=ang if t > L[0]["s"] else "neutral", talk=x.talk("PAPA"), t=t,
-              pose="crossed" if t < L[2]["s"] else "point", look=(.6, .3), blink_seed=1, tilt=-3)
+    L = [x.l(i) for i in range(7)]  # 0 papá ¿un dos? 1 papá mírame 2 mamá 3 leo 4 papá ¿tú? 5 papá ultimátum 6 leo trato
+    hit = x.sfx_t("hit"); hand = x.sfx_t("handshake")
+    PAPA, MAMA, LEO = (300, 880), (790, 910), (540, 1150)
+    keys = [(0, 540, 1000, 1.0),
+            (L[1]["s"] - .15, 320, 960, 1.75),       # papá: "Leo. Mírame."
+            (L[2]["s"] - .2, 770, 1000, 1.7),        # mamá
+            (L[3]["s"] - .25, 540, 1150, 1.8),       # leo
+            (L[4]["s"] - .1, 420, 1000, 1.25),       # papá + leo
+            (L[5]["s"] - .05, 330, 950, 1.55),       # ultimátum
+            (L[6]["s"] - .2, 540, 1160, 2.0)]        # leo: trato
+    cx, cy, z = shots(t, keys, .45)
+    if L[5]["s"] - .05 < t < L[6]["s"]:
+        z += .35 * seg(t, L[5]["s"], L[6]["s"])     # empuje lento durante el ultimátum
+    dim = smooth(seg(t, hit - .1, hit + .3)) * (1 - smooth(seg(t, hand, hand + .5)))
+    c.save(); camera(c, cx, cy, z, shake=pulse(t, hit, .25) * .6, T=x.T)
+    blur_begin(c, max(0, (z - 1.0)) * 9)
+    kitchen_bg(c, t, x, dim)
+    blur_end(c)
+    # quién está desenfocado depende del plano
+    def focus(px): return max(0, (z - 1.15)) * 7 * min(1, abs(px - cx) / 300)
+    papa_emo = "neutral" if t < L[0]["s"] else ("smug" if L[4]["s"] - .1 < t < L[5]["s"] else "angry")
+    blur_begin(c, focus(PAPA[0]))
+    character(c, "PAPA", PAPA[0], PAPA[1], 1.12, emo=papa_emo, talk=x.talk("PAPA"), t=t,
+              pose="point" if L[5]["s"] < t < L[6]["s"] else "crossed", look=(.6, .3), blink_seed=1, tilt=-3,
+              rim=("#ffd9a0", .5))
+    blur_end(c)
+    blur_begin(c, focus(MAMA[0]))
     character(c, "MAMA", MAMA[0], MAMA[1], 1.08, emo="worried", talk=x.talk("MAMA"), t=t, pose="hips",
-              look=(-.6, .4), blink_seed=2, tilt=3)
-    lemo = "sad" if t < L[3]["s"] - .3 else ("determined" if t < L[4]["s"] else "sad")
-    character(c, "LEO", LEO[0], LEO[1], 0.95, emo=lemo, talk=x.talk("LEO"), t=t,
-              look=(0, .8) if lemo == "sad" else (0, 0), blink_seed=3)
+              look=(-.6, .4) if t < L[3]["s"] else (-.3, .5), blink_seed=2, tilt=3, rim=("#ffd9a0", .4))
+    blur_end(c)
+    if t < L[3]["s"] - .3: lemo, look = "sad", (0, .9)
+    elif t < L[4]["e"]: lemo, look = "determined", (-.2, -.2)
+    elif t < L[6]["s"] - .1: lemo, look = "worried", (-.5, -.1)
+    else: lemo, look = "determined", (-.4, -.3)
+    blur_begin(c, focus(LEO[0]) * .6)
+    character(c, "LEO", LEO[0], LEO[1], 0.95, emo=lemo, talk=x.talk("LEO"), t=t, look=look, blink_seed=3, rim=("#ffd9a0", .45))
+    blur_end(c)
     table(c)
     c.restore()
-    # tinte rojo y relámpago
-    c.drawRect(skia.Rect.MakeWH(W, H), P(hexc("#ff2020", .12 * seg(t, L[0]["s"], L[0]["s"] + 1) * (1 - seg(t, L[3]["s"] - .5, L[3]["s"])))))
-    flash(c, lt * .55, "#dfe8ff")
-    report_card(c, t, L[0]["s"] - .3, L[0]["s"] + 2.4)
-    # golpe de puerta al final
-    dt = x.sfx_t("door")
-    flash(c, seg(t, dt, dt + .05) * (1 - seg(t, dt + .1, d)) * 0 + seg(t, dt - .02, dt + .08), "#000000")
-    flash(c, 1 - seg(t, 0, .3), "#000000")
+    # luz roja durante el ultimátum
+    c.drawRect(skia.Rect.MakeWH(W, H), P(hexc("#7a0010", .28 * dim)))
+    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=rad(W / 2, H / 2, 1100, [hexc("#000000", 0), hexc("#000000", .5 * dim)])))
+    # condiciones del trato, palabra a palabra
+    if L[5]["s"] < t < hand:
+        s5, e5 = L[5]["s"], L[5]["e"]; du = e5 - s5
+        items = [(.0, "30 DÍAS", "#ffd400"), (.38, "SIN MÓVIL", "#ff4d5a"), (.68, "ACADEMIA EN VERANO", "#ff4d5a")]
+        for i, (fr, s, col) in enumerate(items):
+            ta = s5 + fr * du
+            k = out_back(seg(t, ta, ta + .3), 2)
+            if k <= 0: continue
+            c.save(); c.translate(W / 2 + (i - 1) * 40, 330 + i * 120); c.rotate(-4 + i * 4); c.scale(k, k)
+            wbox = tw(s, 66) + 70
+            rrect(c, -wbox / 2, -55, wbox, 100, 22, P(hexc("#0b0b0b", .85)))
+            rrect(c, -wbox / 2, -55, wbox, 100, 22, P(hexc(col), stroke=6))
+            text(c, s, 0, 20, 66, hexc(col))
+            c.restore()
+    # rótulo de tiempo al principio
+    if t < 2.2:
+        a = seg(t, .2, .5) * (1 - seg(t, 1.7, 2.1))
+        c.drawRect(skia.Rect.MakeWH(W, H), P(hexc("#000000", .35 * a)))
+        text(c, "HACE 30 DÍAS", W / 2, 960, 110, hexc("#ffffff", a), stroke=10, stroke_color=hexc("#000000", a), spacing=6)
+        text(c, "Martes, 21:47", W / 2, 1050, 48, hexc("#ffd400", a), weight=700, fam="JetBrains Mono")
+    report_insert(c, t, L[0]["s"] - .9, L[1]["s"] - .15, L[0]["s"] + .3)
+    handshake_insert(c, t, hand - .05, d + .1)
+    flash(c, 1 - seg(t, 0, .35), "#000000")
 
 # ------------------------------------------------------------------ 4. HABITACIÓN
+CARDS = [("DEL", 91, "#f5c542"), ("MED", 88, "#cfd8e3"), ("DEF", 86, "#f5c542"), ("POR", 89, "#9ad1ff"),
+         ("DEL", 93, "#ff9bd2"), ("MED", 90, "#f5c542"), ("EXT", 87, "#cfd8e3"), ("DEL", 94, "#b38cff"), ("MED", 85, "#9ad1ff")]
+
+def player_card(c, x, y, s, rot, pos, ovr, col, seed):
+    r = random.Random(seed)
+    c.save(); c.translate(x, y); c.rotate(rot); c.scale(s, s)
+    rrect(c, -95, -130, 190, 260, 22, P(hexc("#000000", .4), blur=14))
+    rrect(c, -95, -135, 190, 260, 22, P(shader=lin(-95, -135, 95, 125, [hexc(col), mix_hex(col, "#000000", .35)])))
+    rrect(c, -85, -125, 170, 240, 16, P(hexc("#ffffff", .35), stroke=3))
+    text(c, str(ovr), -50, -72, 54, hexc("#1a1a1a"))
+    text(c, pos, -50, -36, 26, hexc("#1a1a1a"), weight=800)
+    oval(c, 25, -45, 40, 46, P(hexc("#1a1a1a", .25)))  # silueta
+    rrect(c, -5, -5, 60, 40, 20, P(hexc("#1a1a1a", .25)))
+    for i, lab in enumerate(["VEL", "TIR", "PAS", "REG"]):
+        text(c, f"{r.randint(70, 97)} {lab}", -60 + (i % 2) * 85, 62 + (i // 2) * 34, 22, hexc("#1a1a1a"), weight=800, align="left")
+    c.restore()
+
 def s_bedroom(c, x):
     t, d = x.t, x.d
-    l0, l1, l2 = x.l(0), x.l(1), x.l(2)
+    L = [x.l(i) for i in range(6)]
     idea = x.sfx_t("idea")
     warm = smooth(seg(t, idea, idea + .8))
-    c.save(); camera(c, 540, 1000 - 40 * warm, 1.05 + 0.18 * smooth(t / d), T=x.T, shake=pulse(t, idea, .2) * .4)
+    zoom = 1.05 + 0.10 * smooth(t / d) + 0.25 * in_out(seg(t, L[1]["s"] - .2, L[1]["s"] + .4)) * (1 - in_out(seg(t, L[3]["s"] - .3, L[3]["s"] + .3)))
+    c.save(); camera(c, 540, 1000 - 60 * warm, zoom, T=x.T, shake=pulse(t, idea, .2) * .4)
+    blur_begin(c, (zoom - 1.0) * 8)
     c.drawRect(skia.Rect.MakeWH(W, H), P(shader=lin(0, 0, 0, H, [mix_hex("#0b1230", "#3a2a5a", warm), mix_hex("#141d45", "#5a3a5a", warm), mix_hex("#070a1c", "#24142a", warm)])))
-    # ventana con luna y lluvia
     rrect(c, 90, 230, 380, 480, 16, P(hexc("#05070f")))
     rrect(c, 108, 248, 344, 444, 8, P(shader=lin(0, 248, 0, 692, [hexc("#0e1a44"), hexc("#26346e")])))
     glow(c, 360, 350, 160, "#cfe0ff", .5); oval(c, 360, 350, 46, 46, P(hexc("#eef3ff")))
     c.save(); c.clipRect(skia.Rect.MakeXYWH(108, 248, 344, 444)); RAIN.rain(c, t, (108, 248, 344, 444), .45, 1200); c.restore()
     c.drawLine(280, 248, 280, 692, P(hexc("#05070f"), stroke=12)); c.drawLine(108, 470, 452, 470, P(hexc("#05070f"), stroke=12))
-    # luz de luna en la pared
     c.drawPath(path([(108, 248), (452, 248), (900, 1500), (300, 1500)]), P(shader=lin(0, 248, 0, 1500, [hexc("#9fb8ff", .12), hexc("#9fb8ff", 0)]), blur=20))
-    # pósters
     c.save(); c.translate(760, 420); c.rotate(4)
     rrect(c, -130, -170, 260, 340, 6, P(hexc("#e43d3d"))); c.drawPath(path([(0, -110), (40, 40), (0, 20), (-40, 40)]), P(hexc("#ffffff")))
     oval(c, 0, 70, 14, 30, P(hexc("#ffc23d"))); text(c, "SUEÑA", 0, 140, 44, hexc("#ffffff"))
     c.restore()
-    c.save(); c.translate(960, 820); c.rotate(-5)
-    rrect(c, -90, -110, 180, 220, 6, P(hexc("#2f7de1"))); oval(c, 0, -10, 55, 55, P(hexc("#ff9b2f")))
-    c.drawLine(-55, -10, 55, -10, P(hexc("#2f7de1"), stroke=5)); c.drawLine(0, -65, 0, 45, P(hexc("#2f7de1"), stroke=5))
-    c.restore()
-    # estantería con libros
     rect(c, 560, 700, 300, 14, P(hexc("#3b2a22")))
     for i, col in enumerate(["#c0392b", "#2980b9", "#27ae60", "#8e44ad", "#f39c12"]):
         rect(c, 580 + i * 34, 590 + (i % 2) * 14, 28, 110 - (i % 2) * 14, P(hexc(col, .8)))
-    # cama
+    # despertador digital
+    rrect(c, 820, 1180, 200, 90, 14, P(hexc("#111111")))
+    text(c, "03:12", 920, 1242, 54, hexc("#ff3b3b", .9 if int(t * 2) % 2 or t > 2 else .5), fam="JetBrains Mono", weight=800)
     rrect(c, -40, 1280, 1160, 700, 40, P(hexc("#2b3a7a"))); rrect(c, -40, 1260, 1160, 90, 40, P(hexc("#3d52a8")))
     rrect(c, 60, 1210, 300, 110, 50, P(hexc("#dfe6ff")))
-    # Leo con el móvil
-    emo = "tired" if t < l1["s"] else ("sad" if t < idea else ("surprised" if t < idea + 1.2 else "excited"))
-    phone_light = ("#7cc4ff", .45 * (1 - warm) + .1)
-    character(c, "LEO", 540, 1000, 1.15, emo=emo, talk=x.talk("LEO"), t=t, pose="phone",
-              look=(0, .9) if t < idea else (.2, -.8), light=phone_light, blink_seed=4)
-    # bombilla
+    blur_end(c)
+    if t < L[1]["s"]: emo, look = "tired", (0, .9)
+    elif t < L[2]["s"]: emo, look = "happy", (.5, -.6)
+    elif t < idea: emo, look = "sad", (0, .9)
+    elif t < idea + 1.0: emo, look = "surprised", (.2, -.8)
+    else: emo, look = "excited", (0, -.2)
+    character(c, "LEO", 540, 1000, 1.15, emo=emo, talk=x.talk("LEO"), t=t, pose="phone", look=look,
+              light=("#7cc4ff", .45 * (1 - warm) + .1), blink_seed=4, rim=("#9fb8ff", .5 * (1 - warm) + .2))
     if t > idea:
-        k = out_elastic(seg(t, idea, idea + .9)); y0 = 690 + math.sin(t * 3) * 8
+        k = out_elastic(seg(t, idea, idea + .9)); y0 = 700 + math.sin(t * 3) * 8
         c.save(); c.translate(540, y0); c.scale(k, k)
         rays(c, 0, 0, t, "#ffe27a", .25, 12, 500, 30)
         glow(c, 0, 0, 260, "#ffe27a", .7)
         oval(c, 0, 0, 70, 75, P(shader=rad(-20, -25, 90, [hexc("#ffffff"), hexc("#ffe680"), hexc("#ffc21a")])))
-        rrect(c, -34, 62, 68, 50, 10, P(hexc("#9aa3b5"))); c.drawLine(-30, 80, 30, 80, P(hexc("#6b7385"), stroke=5)); c.drawLine(-30, 96, 30, 96, P(hexc("#6b7385"), stroke=5))
+        rrect(c, -34, 62, 68, 50, 10, P(hexc("#9aa3b5")))
+        c.drawLine(-30, 80, 30, 80, P(hexc("#6b7385"), stroke=5)); c.drawLine(-30, 96, 30, 96, P(hexc("#6b7385"), stroke=5))
         c.drawPath(path([(-18, 30), (-8, -10), (0, 20), (8, -10), (18, 30)], close=False), P(hexc("#c27a00"), stroke=5))
         c.restore()
     c.restore()
-    flash(c, pulse(t, idea, .3) * .7, "#fff3c0")
-    # texto "¿y si...?" cinético
-    if l2["s"] + 1.1 < t:
-        k = out_back(seg(t, l2["s"] + 1.1, l2["s"] + 1.5))
-        c.save(); c.translate(W / 2, 330); c.scale(k, k); c.rotate(-4)
-        rrect(c, -300, -80, 600, 120, 30, P(hexc("#ffd400")))
-        text(c, "APUNTES = JUEGO", 0, 0, 64, hexc("#1a1200"))
+    # cromos de futbolistas en abanico (300 futbolistas)
+    k_in = out_back(seg(t, L[1]["s"], L[1]["s"] + .6)); k_out = in_cubic(seg(t, L[2]["s"], L[2]["s"] + .5))
+    if k_in > 0 and k_out < 1:
+        n = len(CARDS)
+        for i, (pos, ovr, col) in enumerate(CARDS):
+            ki = out_back(seg(t, L[1]["s"] + i * .07, L[1]["s"] + .4 + i * .07))
+            if ki <= 0.01: continue
+            a = -60 + 120 * i / (n - 1)
+            r_ = 380
+            cx = W / 2 + math.sin(math.radians(a)) * r_ * ki
+            cy = 820 - math.cos(math.radians(a)) * r_ * .55 * ki + k_out * (900 + i * 60)
+            c.save(); c.saveLayerAlpha(None, int(255 * (1 - k_out * .6)))
+            player_card(c, cx, cy, .85 * min(1, ki), a * .5 + k_out * (i - 4) * 30, pos, ovr, col, i)
+            c.restore(); c.restore()
+        cnt = int(300 * out_cubic(seg(t, L[1]["s"] + .2, L[1]["e"])))
+        text(c, f"{cnt}", W / 2, 380, 170, hexc("#ffd400", 1 - k_out), stroke=12, stroke_color=hexc("#000000", 1 - k_out))
+        text(c, "FUTBOLISTAS", W / 2, 450, 54, hexc("#ffffff", 1 - k_out), weight=800, spacing=8)
+    # examen de historia en blanco
+    ke = out_back(seg(t, L[2]["s"] + .2, L[2]["s"] + .6)); ko = in_cubic(seg(t, idea - .2, idea + .1))
+    if ke > 0 and ko < 1:
+        c.save(); c.translate(W / 2, 720 - ko * 1200); c.rotate(5); c.scale(ke * .9, ke * .9)
+        rrect(c, -300, -330, 600, 640, 14, P(hexc("#000000", .4), blur=20))
+        rrect(c, -300, -340, 600, 640, 14, P(hexc("#fdfcf5")))
+        text(c, "EXAMEN DE HISTORIA", 0, -270, 42, hexc("#1d3a8a"))
+        for i, q in enumerate(["1. ¿Año del descubrimiento?", "2. ¿Quién fue Carlos V?", "3. Revolución Francesa:",
+                               "4. ¿Qué pasó en 1812?", "5. Fecha de la Constitución:"]):
+            yy = -190 + i * 95
+            text(c, q, -260, yy, 30, hexc("#333333"), weight=600, align="left", fam="DejaVu Serif")
+            text(c, "???", -230, yy + 42, 30, hexc("#999999"), weight=700, align="left")
+        k2 = out_back(seg(t, L[2]["s"] + 1.0, L[2]["s"] + 1.3), 2.5)
+        if k2 > 0:
+            c.save(); c.translate(190, -190); c.scale(k2, k2); c.rotate(-10)
+            oval(c, 0, 0, 80, 70, P(hexc("#d81e2a"), stroke=8)); text(c, "2", 0, 34, 100, hexc("#d81e2a"))
+            c.restore()
         c.restore()
-    flash(c, 1 - seg(t, 0, .6), "#000000")
+    # tipografía cinética del descubrimiento
+    if L[4]["s"] - .1 < t < L[5]["s"] + .1:
+        s4, e4 = L[4]["s"], L[4]["e"]; mid = s4 + (e4 - s4) * .38
+        k1 = out_back(seg(t, s4, s4 + .3)); strike = out_cubic(seg(t, mid - .1, mid + .25))
+        c.save(); c.translate(W / 2, 330); c.scale(k1, k1)
+        text(c, "EL PROBLEMA ERA YO", 0, 0, 74, hexc("#ffffff", 1 - .5 * strike), stroke=10)
+        if strike > 0:
+            c.drawLine(-380, -24, -380 + 760 * strike, -20, P(hexc("#ff3b3b"), stroke=14))
+        c.restore()
+        k2 = out_back(seg(t, mid + .2, mid + .5), 2)
+        if k2 > 0:
+            c.save(); c.translate(W / 2, 450); c.scale(k2, k2); c.rotate(-3)
+            rrect(c, -440, -66, 880, 112, 24, P(hexc("#ffd400")))
+            text(c, "ES CÓMO NOS HACEN ESTUDIAR", 0, 14, 56, hexc("#1a1200"))
+            c.restore()
+    if t > L[5]["s"] + .4:
+        k = out_back(seg(t, L[5]["s"] + .4, L[5]["s"] + .8), 2)
+        c.save(); c.translate(W / 2, 360); c.scale(k, k); c.rotate(-4)
+        rrect(c, -380, -90, 760, 160, 36, P(hexc("#8b5cff")))
+        text(c, "ESTUDIAR = JUGAR", 0, 25, 84, hexc("#ffffff"))
+        c.restore()
+    flash(c, pulse(t, idea, .3) * .7, "#fff3c0")
+    flash(c, 1 - seg(t, 0, .5), "#000000")
 
 # ------------------------------------------------------------------ 5. LOGO
 def app_icon(c, x, y, s, t):
@@ -531,57 +671,72 @@ def s_plan(c, x):
 # ------------------------------------------------------------------ 7. CLIFFHANGER
 def s_cliff(c, x):
     t, d = x.t, x.d
-    l0, l1 = x.l(0), x.l(1)
-    boom = x.sfx_t("boom")
+    l0, l1, l2 = x.l(0), x.l(1), x.l(2)
+    boom = x.sfx_t("boom"); tod = l2["s"]
+    end0 = l2["e"] + .7
+    gold = smooth(seg(t, tod - .1, tod + .3))
     c.drawRect(skia.Rect.MakeWH(W, H), P(hexc("#050508")))
-    red = seg(t, boom, boom + .1)
-    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=rad(W / 2, 800, 1000, [mix_hex("#2a2a40", "#5a0a10", red, .9), hexc("#000000", 0)])))
-    end0 = l1["e"] + .5
+    red = seg(t, boom, boom + .1) * (1 - gold)
+    c.drawRect(skia.Rect.MakeWH(W, H), P(shader=rad(W / 2, 800, 1100, [mix_hex("#2a2a40", "#5a0a10", red, .95), hexc("#000000", 0)])))
+    if gold > 0: c.drawRect(skia.Rect.MakeWH(W, H), P(shader=rad(W / 2, 800, 1100, [hexc("#7a5200", .95 * gold), hexc("#000000", 0)])))
+    if gold > 0: rays(c, W / 2, 760, t, "#ffd34a", .14 * gold, 18)
     c.save()
-    z = 1.2 + .25 * smooth(seg(t, 0, boom)) + .15 * out_cubic(seg(t, boom, boom + .3))
-    camera(c, W / 2, 860, z, shake=pulse(t, boom, .35) * 1.2, T=x.T)
-    character(c, "LEO", W / 2, 860, 1.3, emo="worried" if t < boom else "shock", talk=x.talk("LEO"), t=t,
-              look=(0, 0), light=("#ff2a2a", .25 * red))
+    z = 1.2 + .25 * smooth(seg(t, 0, boom)) + .15 * out_cubic(seg(t, boom, boom + .3)) - .2 * out_cubic(seg(t, tod, tod + .5))
+    camera(c, W / 2, 900, z, shake=pulse(t, boom, .35) * 1.2 + pulse(t, tod, .2) * .5, T=x.T)
+    emo = "worried" if t < boom else ("shock" if t < tod - .2 else ("sad" if t < tod else "determined"))
+    character(c, "LEO", W / 2, 900, 1.3, emo=emo, talk=x.talk("LEO"), t=t, look=(0, .4) if emo == "sad" else (0, 0),
+              light=("#ff2a2a", .25 * red), rim=("#ffd34a", .7 * gold) if gold > 0 else ("#9fb8ff", .3),
+              pose="fist" if t > tod + .2 else "idle")
     c.restore()
-    if t > boom and t < end0 + .5:
-        k = out_back(seg(t, boom, boom + .25), 2.5) * (1 - seg(t, end0, end0 + .4))
+    if boom < t < end0 + .5:
+        kout = seg(t, end0, end0 + .4)
+        k = out_back(seg(t, boom, boom + .25), 2.5) * (1 - kout)
         g = pulse(t, boom, .5)
-        c.save(); c.translate(W / 2, 400); c.scale(k, k); c.rotate(-3)
+        c.save(); c.translate(W / 2, 360 - 60 * gold); c.scale(k * (1 - .25 * gold), k * (1 - .25 * gold)); c.rotate(-3)
         for dx, col in ((-10 * g - 3, "#ff0040"), (10 * g + 3, "#00e5ff")):
-            text(c, "NO SÉ", dx, -60, 170, hexc(col, .7)); text(c, "PROGRAMAR", dx, 110, 150, hexc(col, .7))
+            text(c, "NO SÉ", dx, -60, 170, hexc(col, .7 * (1 - gold))); text(c, "PROGRAMAR", dx, 110, 150, hexc(col, .7 * (1 - gold)))
         text(c, "NO SÉ", 0, -60, 170, hexc("#ffffff"), stroke=14)
         text(c, "PROGRAMAR", 0, 110, 150, hexc("#ffffff"), stroke=14)
         c.restore()
-        # líneas glitch
+        if t > tod:
+            kt = out_back(seg(t, tod, tod + .3), 3) * (1 - kout)
+            c.save(); c.translate(W / 2 + 120, 600); c.rotate(-8); c.scale(kt, kt)
+            glow(c, 0, -40, 380, "#ffc53d", .5)
+            text(c, "...TODAVÍA", 0, 0, 130, shader=lin(0, -110, 0, 10, [hexc("#ffffff"), hexc("#ffd34a"), hexc("#e09a0f")], [0, .4, 1]),
+                 stroke=12, stroke_color=hexc("#2a1700"), shadow=20)
+            c.restore()
         r = random.Random(int(t * 30))
         for i in range(int(8 * g)):
             yy = r.random() * H
             rect(c, 0, yy, W, r.uniform(4, 30), P(hexc(r.choice(["#ff0040", "#00e5ff", "#ffffff"]), .25 * g)))
-    # tarjeta final
     if t > end0:
         k = out_cubic(seg(t, end0, end0 + .5))
-        c.drawRect(skia.Rect.MakeWH(W, H), P(hexc("#000000", .75 * k)))
+        c.drawRect(skia.Rect.MakeWH(W, H), P(hexc("#000000", .78 * k)))
         c.save(); c.translate(0, 80 * (1 - k))
-        text(c, "MAÑANA", W / 2, 640, 70, hexc("#ffd400", k), weight=800, spacing=12)
-        text(c, "DÍA 2", W / 2, 840, 220, hexc("#ffffff", k), stroke=14, stroke_color=hexc("#000000", k), shadow=20)
-        text(c, "Aprender a programar", W / 2, 960, 60, hexc("#ffffff", .9 * k), weight=800)
-        text(c, "en 24 horas", W / 2, 1035, 60, hexc("#ffffff", .9 * k), weight=800)
+        text(c, "MAÑANA", W / 2, 600, 70, hexc("#ffd400", k), weight=800, spacing=12)
+        text(c, "DÍA 2", W / 2, 800, 220, hexc("#ffffff", k), stroke=14, stroke_color=hexc("#000000", k), shadow=20)
+        text(c, "Aprender a programar", W / 2, 920, 60, hexc("#ffffff", .9 * k), weight=800)
+        text(c, "en 24 horas", W / 2, 995, 60, hexc("#ffffff", .9 * k), weight=800)
         kb = out_back(seg(t, end0 + .4, end0 + .8)) * (1 + .05 * math.sin(t * 8))
-        c.save(); c.translate(W / 2, 1230); c.scale(kb, kb)
+        c.save(); c.translate(W / 2, 1190); c.scale(kb, kb)
         rrect(c, -260, -70, 520, 140, 70, P(hexc("#e0262f")))
         text(c, "SÍGUEME ➜", 0, 22, 64, hexc("#ffffff"), fam="DejaVu Sans")
         c.restore()
-        # progreso de la serie
         for i in range(30):
             xx = 90 + i * 30.5
-            rrect(c, xx, 1420, 24, 24, 6, P(hexc("#ffd400", k) if i < 1 else hexc("#ffffff", .25 * k)))
-        text(c, "1 de 30 capítulos", W / 2, 1520, 40, hexc("#ffffff", .7 * k), weight=700)
+            rrect(c, xx, 1380, 24, 24, 6, P(hexc("#ffd400", k) if i < 1 else hexc("#ffffff", .25 * k)))
+        text(c, "Capítulo 1 de 30 · El trato", W / 2, 1480, 40, hexc("#ffffff", .7 * k), weight=700)
         c.restore()
     flash(c, pulse(t, boom, .12), "#ffffff")
+    flash(c, pulse(t, tod, .15) * .7, "#fff3c4")
+    flash(c, 1 - seg(t, 0, .4), "#000000")
 
-SCENE_FUNCS = {"flash": s_flash, "freeze": s_freeze, "rewind": s_rewind, "hook": s_hook, "title": s_title, "kitchen": s_kitchen, "bedroom": s_bedroom,
+SCENE_FUNCS = {"flash": s_flash, "freeze": s_freeze, "rewind": s_rewind, "title": s_title, "kitchen": s_kitchen, "bedroom": s_bedroom,
                "logo": s_logo, "plan": s_plan, "cliff": s_cliff}
 # escenas en las que se muestra el HUD (día / dinero)
 HUD_SCENES = {"kitchen", "bedroom", "logo", "plan"}
 # escenas sin subtítulos (texto grande propio)
 NO_SUBS = set()
+
+WHIP_IN = {"kitchen", "logo", "plan"}
+VIGNETTE = {"cliff": 0.75, "kitchen": 0.62, "bedroom": 0.62}

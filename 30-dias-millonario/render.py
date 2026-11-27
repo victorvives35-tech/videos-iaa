@@ -54,8 +54,18 @@ def draw_frame(fi):
     c.clear(skia.ColorBLACK)
     sc = scene_at(T)
     ctx = Ctx(sc, T)
+    # transición con barrido: desenfoque de movimiento al entrar en una escena
+    whip = getattr(VIS, "WHIP_IN", set())
+    k = 1.0
+    if sc["id"] in whip and ctx.t < 0.28:
+        k = (ctx.t / 0.28)
+        c.save(); c.translate(-W * 0.35 * (1 - k) ** 2, 0)
+        p = skia.Paint(); p.setImageFilter(skia.ImageFilters.Blur(70 * (1 - k) ** 1.5 + 0.1, 0.1, skia.TileMode.kClamp))
+        c.saveLayer(None, p)
     VIS.SCENE_FUNCS[sc["id"]](c, ctx)
-    post(c, fi)
+    if k < 1.0:
+        c.restore(); c.restore()
+    post(c, fi, vignette=getattr(VIS, "VIGNETTE", {}).get(sc["id"], 0.55))
     if sc["id"] in VIS.HUD_SCENES:
         a = 1.0
         first = min(s["start"] for s in TL["scenes"] if s["id"] in VIS.HUD_SCENES)

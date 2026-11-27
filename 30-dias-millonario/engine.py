@@ -14,6 +14,8 @@ def out_cubic(t): t = clamp(t); return 1 - (1 - t) ** 3
 def in_cubic(t): t = clamp(t); return t ** 3
 def in_out(t): t = clamp(t); return 4 * t ** 3 if t < .5 else 1 - (-2 * t + 2) ** 3 / 2
 def out_back(t, s=1.70158):
+    if t <= 0: return 0.0
+    if t >= 1: return 1.0
     t = clamp(t) - 1
     return 1 + (s + 1) * t ** 3 + s * t ** 2
 def out_elastic(t):
@@ -100,6 +102,16 @@ def text(c, s, x, y, size, color=None, weight=900, align="center", stroke=0, str
     if shader is not None and alpha < 1: p.setAlphaf(alpha)
     draw(p)
     return w
+
+# ---------------------------------------------------------------- profundidad de campo
+def blur_begin(c, sx, sy=None):
+    """todo lo que se dibuje hasta blur_end() sale desenfocado"""
+    sy = sx if sy is None else sy
+    if sx < 0.3 and sy < 0.3:
+        c.save(); return
+    p = skia.Paint(); p.setImageFilter(skia.ImageFilters.Blur(sx, sy, skia.TileMode.kClamp))
+    c.saveLayer(None, p)
+def blur_end(c): c.restore()
 
 # ---------------------------------------------------------------- grano / viñeta
 _GRAIN = None
@@ -327,7 +339,7 @@ def _body(c, sp, pose, t, breath):
     c.restore()
 
 def character(c, who, x, y, scale=1.0, emo="neutral", talk=0.0, t=0.0, pose="idle", look=(0, 0),
-              tilt=0.0, blink_seed=0, light=None, flip=False, shades=False):
+              tilt=0.0, blink_seed=0, light=None, flip=False, shades=False, rim=None):
     """Dibuja un personaje de busto. (x, y) = centro de la cabeza."""
     sp = CHARS[who]
     # parpadeo pseudoaleatorio
@@ -341,6 +353,7 @@ def character(c, who, x, y, scale=1.0, emo="neutral", talk=0.0, t=0.0, pose="idl
     oval(c, 0, 360, 250, 380, P(hexc("#000000", .25), blur=40))
     _hair_back(c, sp)
     _body(c, sp, pose, t, breath)
+    oval(c, 0, 118, 80, 26, P(hexc("#000000", .22), blur=10))  # sombra de la barbilla sobre el cuello
     c.save(); c.rotate(tilt + math.sin(t * 1.3 + blink_seed) * 1.5 + talk * math.sin(t * 9) * 2)
     # orejas
     for s in (-1, 1):
@@ -375,6 +388,14 @@ def character(c, who, x, y, scale=1.0, emo="neutral", talk=0.0, t=0.0, pose="idl
     if sp.get("earrings"):
         for s in (-1, 1): oval(c, s * 94, 38, 8, 8, P(hexc("#ffd34a")))
     _hair_front(c, sp, t)
+    if rim:  # luz de contorno en el lado derecho de la cabeza
+        rc, ra = rim
+        rp = skia.Path(); rp.addArc(skia.Rect.MakeLTRB(-95, -115, 95, 110), -70, 120)
+        c.drawPath(rp, P(hexc(rc, ra), stroke=7, blur=3))
+    # sombreado inferior de la cara (volumen)
+    c.save(); c.clipPath(hp, skia.ClipOp.kIntersect, True)
+    oval(c, 0, 150, 130, 80, P(hexc("#7a3a20", .10), blur=20))
+    c.restore()
     if light:  # luz de color sobre la cara (pantalla del móvil, rayos...)
         col, a = light
         c.drawPath(hp, P(shader=rad(0, 80, 230, [hexc(col, a), hexc(col, 0)]), blend=skia.BlendMode.kScreen))
@@ -392,6 +413,12 @@ def chunk_line(text, max_chars=18):
             chunks.append(cur); cur = []
     if cur: chunks.append(cur)
     return chunks
+
+KEYWORDS = {"millón", "euros", "treinta", "dos", "trato", "juego", "apruebaya", "millonario", "todavía",
+            "trescientos", "cinco", "programar", "academia", "móvil", "yo"}
+def is_key(w):
+    import re as _re
+    return _re.sub(r"[^\wáéíóúñ]", "", w.lower()) in KEYWORDS
 
 SPK_COLOR = {"LEO": "#ffd400", "PAPA": "#6fb6ff", "MAMA": "#5fe3c0", "MARTA": "#ff8fd0", "ORTEGA": "#c9a7ff"}
 
@@ -425,7 +452,7 @@ def subtitles(c, lines, T, y=1450):
             wi = k + j
             active = times[wi] <= T < times[wi + 1]
             said = T >= times[wi]
-            col = hexc(hl) if active else hexc("#ffffff", 1 if said else 0.92)
+            col = hexc(hl) if active else (hexc("#ffb02e") if is_key(w) else hexc("#ffffff", 1 if said else 0.92))
             s = 1.07 if active else 1.0
             cx = x + ws[j] / 2
             c.save(); c.translate(cx, y); c.scale(s, s); c.rotate(-1.5 if active else 0)
