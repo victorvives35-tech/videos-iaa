@@ -10,7 +10,7 @@ import in_this_town as m
 from in_this_town import (W, H, CHARS, npc, avatar, town, sky, block, sticker, font, ease, shake_img, huss_hit)
 
 SCRIPT = [
-    ("In this town, every time you say huss... something magical happens!", "intro", None),
+    ("In this town, every time you say [HUSS] something magical happens!", "intro", None),
     ("The baker said:", "baker", "solo", 1),
     ("And all his bread turned into gold! Now nobody can eat it.", "baker_gold", None),
     ("The mailman said:", "mailman", "solo", 1),
@@ -23,13 +23,13 @@ SCRIPT = [
     ("Still nothing. A pigeon pooped on my head.", "me_fail", None),
     ("That night, I went to the basketball court... and whispered:", "night", "solo", 1),
     ("And a golden basketball fell from the sky! Right on my face.", "goldball", None),
-    ("It was the legendary HUSS BALL! Whoever holds it gets every power in town!", "reveal", None),
+    ("It was the legendary [HUSS] ball! Whoever holds it gets every power in town!", "reveal", None),
     ("I bounced it once... and the whole town started floating!", "float", None),
     ("The gold bread flew away! The flying car crashed! Grandma was upside down... and loving it.", "chaos", None),
     ("So I held the ball up high... and said:", "hold", None),
     ("", "huss", "solo", 6),
     ("Everything came back down! I was a hero!", "land", None),
-    ("But that night, a ninja broke into my room... and stole the Huss Ball!", "thief", None),
+    ("But that night, a ninja broke into my room... and stole the [HUSS] ball!", "thief", None),
     ("I chased him across the whole town. He was really fast for a ninja.", "chase", None),
     ("I finally cornered him, and said:", "corner", "solo", 6),
     ("The ninja slowly took off his mask...", "unmask", None),

@@ -139,15 +139,30 @@ def build(voice, tmp):
     for i, row in enumerate(SCRIPT):
         txt, scene, huss = row[:3]; nh = row[3] if len(row) > 3 else 0
         audio = np.zeros(0, np.float32); words = []
+        inline_hits = []
         if txt:
-            # narrador con energía: más rápido, algo más agudo, entonación más variada y con presencia
-            audio = tts(voice, txt, os.path.join(tmp, f"l{i}.wav"), tmp, rate=1.09, ls="0.84", ns="0.9", nw="1.0",
-                        extra=",equalizer=f=3000:t=q:w=1:g=4,equalizer=f=200:t=q:w=1:g=2")
-            ws = txt.split(); wts = [len(w.strip(".,?!:")) + 2 for w in ws]
-            tot, acc, d = sum(wts), 0, len(audio) / SR
-            for w, wt in zip(ws, wts):
-                words.append((w, cur + d * acc / tot, cur + d * (acc + wt) / tot)); acc += wt
-        huss_t0 = None; hits = []
+            # [HUSS] dentro del texto = el narrador no lo dice: suena el HUSS real del audio
+            parts = txt.split("[HUSS]")
+            single, sh = chant_cut(1)
+            pieces = []
+            for pi, part in enumerate(parts):
+                if part.strip():
+                    # narrador con energía: más rápido, algo más agudo, entonación más variada y con presencia
+                    a_ = tts(voice, part.strip(), os.path.join(tmp, f"l{i}_{pi}.wav"), tmp, rate=1.09, ls="0.84", ns="0.9", nw="1.0",
+                             extra=",equalizer=f=3000:t=q:w=1:g=4,equalizer=f=200:t=q:w=1:g=2")
+                    t_a = cur + sum(len(p) for p in pieces) / SR
+                    ws = part.split(); wts = [len(w.strip(".,?!:")) + 2 for w in ws]
+                    tot, acc, d = sum(wts), 0, len(a_) / SR
+                    for w, wt in zip(ws, wts):
+                        words.append((w, t_a + d * acc / tot, t_a + d * (acc + wt) / tot)); acc += wt
+                    pieces.append(a_)
+                if pi < len(parts) - 1:
+                    gap_ = np.zeros(int(.08 * SR), np.float32)
+                    t_h = cur + (sum(len(p) for p in pieces) + len(gap_)) / SR + sh[0]
+                    words.append(("HUSS!", t_h - .02, t_h + .3)); inline_hits.append(t_h)
+                    pieces += [gap_, single.copy(), np.zeros(int(.06 * SR), np.float32)]
+            audio = np.concatenate(pieces) if pieces else audio
+        huss_t0 = None; hits = list(inline_hits)
         if huss:
             huss_t0 = cur + len(audio) / SR + ((.6 if scene == "me" else .12) if txt else 0)
             chant, hits_rel = huss_chant(huss, nh)
