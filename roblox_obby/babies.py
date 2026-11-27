@@ -18,7 +18,7 @@ SCRIPT = [
     ("In this town, it was a normal Monday morning. Then, a giant flash hit the whole town!", "morning", None),
     # ESCENA 2 (5-15 s): todos bebés
     ("And everyone turned into a BABY!", "babies", None),
-    ("Babies everywhere! Crying, running, eating sand!", "babies_b", None),
+    ("[PAUSE 1.6]", "babies_b", None),  # pausa: solo llantos a todo volumen
     ("The baker. The mailman. Even grandma!", "babies2", None),
     ("Grandma was finally younger than me.", "babies3", None),
     # ESCENA 3 (15-25 s): Huss Boy es el único
@@ -41,6 +41,7 @@ SCRIPT = [
     ("Everything went back to normal!", "normal", None),
     ("The mayor was a grown-up again. Grandma was old again.", "normal_b", None),
     ("Everyone... except me.", "twist", "baby", 3),
+    ("[PAUSE 1.2]", "twist_cry", None),  # pausa: Huss Boy bebé llorando
     ("Now the whole town has to babysit me. Worth it.", "twist_b", None),
 ]
 
@@ -160,7 +161,7 @@ CAMS = {  # escena: (zoom inicial, zoom final, (x0,y0)->(x1,y1) centro normaliza
     "shock_b": (1.5, 1.3, (.45, .55), (.55, .52)), "shock_c": (1.35, .999, (.5, .58), (.5, .5)),
     "lab_b": (1.25, 1.5, (.5, .6), (.5, .55)),
     "mayor_b": (1.0, 1.35, (.5, .5), (.5, .42)), "baby_huss_b": (1.4, 1.1, (.5, .62), (.5, .55)),
-    "normal_b": (1.0, 1.25, (.4, .55), (.6, .6)), "twist_b": (1.4, 1.1, (.5, .62), (.5, .55)),
+    "normal_b": (1.0, 1.25, (.4, .55), (.6, .6)), "twist_b": (1.4, 1.1, (.5, .62), (.5, .55)), "twist_cry": (1.1, 1.6, (.5, .55), (.5, .6)),
 }
 
 def camera(img, sc, u):
@@ -177,7 +178,7 @@ def camera(img, sc, u):
 def scene(seg, t, T):
     full = seg["scene"]
     sc = {"babies_b": "babies", "babies3": "babies2", "shock_b": "shock", "shock_c": "shock", "lab_b": "lab",
-          "mayor_b": "mayor", "baby_huss_b": "baby_huss", "normal_b": "normal", "twist_b": "twist"}.get(full, full)
+          "mayor_b": "mayor", "baby_huss_b": "baby_huss", "normal_b": "normal", "twist_b": "twist", "twist_cry": "twist"}.get(full, full)
     dur = seg["dur"] + .2; u = min(1, t / dur)
     img = Image.new("RGBA", (W, H)); amp = 0
     later = []
@@ -215,7 +216,12 @@ def scene(seg, t, T):
                 by = GY - abs(math.sin(T * 6 + i)) * 60
                 baby(d, bx, by, 44 + (i % 3) * 8, T, ["cry", "laugh", "shock", "cry"][i % 4], walk=1, seed=i, look=math.sin(T + i))
             if full == "babies": flash(img, max(0, 1 - t / .25))
-            for j in range(3):
+            if full == "babies_b":
+                for j in range(5):
+                    stk("WAAAH", 150 + (j * 211) % 780, 380 + (j % 3) * 170, 110, (90, 170, 255), rot=-12 + 6 * j,
+                        scale=1 + .15 * math.sin(T * 14 + j))
+                amp = 8
+            for j in range(3 if full == "babies" else 0):
                 if t > .3 + j * .4:
                     stk("WAAAH", 200 + j * 330, 500 + (j % 2) * 160, 90, (90, 170, 255), rot=-8 + 8 * j,
                             scale=1 + .1 * math.sin(T * 12 + j))
@@ -413,9 +419,12 @@ def scene(seg, t, T):
         d = town(img, T)
         for i, x in enumerate([120, 310, 770, 960]):
             avatar(d, x, GY + 10 * abs(math.sin(T * 9 + i)), 42, npc(i + 200), T, 0, "down", "laugh", look=1 if x < W/2 else -1)
-        sh = 1 + .12 * hit
+        sh = 1 + .12 * hit + (.08 * abs(math.sin(T * 10)) if full == "twist_cry" else 0)
         baby(d, W/2, GY + 40, 80 * sh, T, "cry" if k < 0 else ("yell" if hit > .2 else "cry"), hat="huss",
-             clothes=(40, 90, 210), seed=7, pacifier=k < 0)
+             clothes=(40, 90, 210), seed=7, pacifier=k < 0 and full != "twist_cry")
+        if full == "twist_cry":
+            stk("WAAAAAH", W/2, 600, 150, (90, 170, 255), rot=-6, scale=1 + .1 * math.sin(T * 14))
+            amp = 10
         if u > .15 or full == "twist_b":
             stk("BABY HUSS BOY", W/2, 330, 110, (40, 90, 210), rot=-5, scale=1 + .05 * math.sin(T * 9))
         if full == "twist_b" and u > .5:
@@ -450,6 +459,7 @@ def mix_audio(segs, total, out_wav):
         a = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
     a = a.copy(); n = len(a)
     loud = np.zeros(n, np.float32)   # llantos y sirena: chocan con la voz
+    solo = np.zeros(n, np.float32)   # llantos de las pausas: sin narración, a todo volumen
     hits = np.zeros(n, np.float32)   # golpes, pops...
     def put(buf, x, t):
         s_ = int(t * SR); e = min(n, s_ + len(x))
@@ -471,8 +481,11 @@ def mix_audio(segs, total, out_wav):
             put(loud, (np.sin(2 * np.pi * np.cumsum(700 + 250 * np.sign(np.sin(2 * np.pi * 2.5 * tt))) / SR) * .12).astype(np.float32), st)
         if s["scene"] == "press":
             put(hits, m.sfx("pop") * 1.2, st + du * .45); put(hits, m.sfx("boom"), st + du * .5)
-        if s["scene"] == "twist":
-            put(loud, cry(1.4, 600) * .5, st + du * .85)
+        if s["scene"] == "babies_b":
+            for j, f0 in enumerate((470, 620, 540, 700, 580)):
+                put(solo, cry(du + .1 - j * .12, f0, j) * .55, st + j * .1)
+        if s["scene"] == "twist_cry":
+            put(solo, cry(du + .15, 640) * 1.1, st)
     # 1) quitar a los llantos la zona de frecuencias de la voz (700-3500 Hz, -14 dB)
     X = np.fft.rfft(loud); f = np.fft.rfftfreq(n, 1 / SR)
     X[(f > 700) & (f < 3500)] *= .2
@@ -484,7 +497,7 @@ def mix_audio(segs, total, out_wav):
     env = np.convolve(voice, np.ones(2205) / 2205, "same")
     talk = np.clip(env * 25, 0, 1)
     talk = np.convolve(talk, np.ones(4410) / 4410, "same")  # suavizado ~100 ms para que no "bombee"
-    a += loud * (1 - .85 * talk) + hits * (1 - .5 * talk)
+    a += loud * (1 - .85 * talk) + hits * (1 - .5 * talk) + solo
     a /= max(1, np.abs(a).max() / .95)
     with wave.open(out_wav, "w") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)

@@ -148,6 +148,8 @@ def build(voice, tmp):
         txt, scene, huss = row[:3]; nh = row[3] if len(row) > 3 else 0
         audio = np.zeros(0, np.float32); words = []
         inline_hits = []
+        if txt.startswith("[PAUSE"):  # pausa sin narración (para efectos de sonido)
+            audio = np.zeros(int(float(txt[6:-1]) * SR), np.float32); txt = ""
         if txt:
             # [HUSS] dentro del texto = el narrador no lo dice: suena el HUSS real del audio
             parts = txt.split("[HUSS]")
