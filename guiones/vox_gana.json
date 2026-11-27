@@ -1,91 +1,399 @@
 {
   "title": "¿Qué pasaría si Vox ganara las elecciones?",
   "scene": "noche_electoral",
-  "voice": { "id": "chatterbox:", "speed": 1.15 },
-  "meter": { "label": "PAZ", "sub": "FAMILIAR" },
+  "voice": {
+    "id": "chatterbox:",
+    "speed": 1.15
+  },
+  "meter": {
+    "label": "PAZ",
+    "sub": "FAMILIAR"
+  },
   "cast": {
-    "yo": { "skin": "#f9c9a3", "hair": "spiky", "hairColor": "#ec5b17", "shirt": "#7048e8", "outfit": "hoodie" },
-    "otro": { "skin": "#eab38a", "hair": "short", "hairColor": "#3b2a20", "shirt": "#1c7ed6", "outfit": "shirt",
-              "acc": ["mustache"], "thickBrows": true }
+    "yo": {
+      "skin": "#f9c9a3",
+      "hair": "spiky",
+      "hairColor": "#ec5b17",
+      "shirt": "#7048e8",
+      "outfit": "hoodie"
+    },
+    "otro": {
+      "skin": "#eab38a",
+      "hair": "short",
+      "hairColor": "#3b2a20",
+      "shirt": "#1c7ed6",
+      "outfit": "shirt",
+      "acc": [
+        "mustache"
+      ],
+      "thickBrows": true
+    }
   },
   "beats": [
-    { "text": "¿Qué pasaría si *VOX* ganara las elecciones con mayoría absoluta?",
-      "say": "¿¡Qué pasaría si VOX ganara las elecciones... con MAYORÍA ABSOLUTA!?", "tag": "excited",
-      "cam": "wide", "mood": { "yo": "shocked", "otro": "happy" }, "fx": [{ "type": "exclaim", "on": "yo" }],
-      "card": { "type": "title", "title": "Vox gana", "sub": "¿qué cambiaría en España?", "emoji": "🗳️", "color": "#2f9e44" } },
-    { "text": "Todo sale de *su propio programa*. Agárrate.",
-      "say": "Todo esto sale de su propio programa. ¡Agárrate!", "tag": "mischievously",
-      "mood": { "yo": "worried", "otro": "happy" },
-      "card": { "type": "title", "title": "Vox gana", "sub": "¿qué cambiaría en España?", "emoji": "🗳️", "color": "#2f9e44", "tag": "(según sus propuestas)" } },
-
-    { "text": "Primero: se acabaron las *autonomías*. Un solo gobierno y un solo parlamento.",
-      "say": "Primero: ¡se acabaron las autonomías! Un solo gobierno, y un solo parlamento.", "tag": "excited",
-      "cam": "otro", "mood": { "otro": "happy", "yo": "shocked" }, "arm": { "otro": 1 }, "meter": 0.85,
-      "tip": { "n": 1, "label": "Adiós autonomías", "short": "Adiós autonomías" },
-      "card": { "type": "stat", "emoji": "🏛️", "label": "Parlamentos", "value": "17 → 1", "count": false, "sub": "un solo parlamento para toda España" } },
-    { "text": "¿Y ahora a quién le echo la culpa de la *sanidad*?",
-      "say": "¿Y ahora a quién le echo yo la culpa de la sanidad?", "tag": "sarcastic",
-      "cam": "yo", "talk": "yo", "mood": { "yo": "worried" },
-      "quote": { "who": "yo", "text": "¿Y ahora a quién culpo de la sanidad? 🤔" } },
-
-    { "text": "Segundo: *deportaciones* y un muro en Ceuta y Melilla.",
-      "say": "Segundo: deportaciones... ¡y un muro en Ceuta y Melilla!", "tag": "excited",
-      "cam": "wide", "mood": { "otro": "happy", "yo": "shocked" }, "meter": 0.65,
-      "tip": { "n": 2, "label": "Mano dura en la frontera", "short": "Muro y deportaciones" },
-      "card": { "type": "note", "emoji": "🧱", "label": "Ceuta y Melilla", "value": "Muro infranqueable", "sub": "así lo llama su programa" } },
-    { "text": "Y en las ayudas, *prioridad nacional*: primero los españoles.",
-      "say": "Y en las ayudas sociales, prioridad nacional: ¡primero los españoles!", "tag": "excited",
-      "cam": "otro", "mood": { "otro": "happy" }, "arm": { "otro": 1 },
-      "fx": [{ "type": "sparkle", "on": "otro" }],
-      "card": { "type": "note", "emoji": "🇪🇸", "label": "Ayudas sociales", "value": "Prioridad nacional" } },
-
-    { "text": "Tercero: bajada de impuestos y adiós al de *sucesiones*.",
-      "say": "Tercero: ¡bajada de impuestos! Y adiós al impuesto de sucesiones.", "tag": "excited",
-      "cam": "wide", "mood": { "yo": "happy", "otro": "happy" }, "meter": 0.75,
-      "tip": { "n": 3, "label": "Impuestos a la baja", "short": "Fuera sucesiones" },
-      "card": { "id": "herencia", "type": "receipt", "title": "HERENCIA", "sub": "de la abuela",
-                "rows": [{ "l": "Piso en Cuenca", "v": "1 ud." }, { "l": "Impuesto sucesiones", "v": "0,00 €", "hl": true, "new": true }], "total": "Todo para ti" } },
-    { "text": "Oye... pues esto *no suena tan mal*.",
-      "say": "Oye... [laughs] pues esto no me suena tan mal.", "tag": "laughs",
-      "cam": "yo", "talk": "yo", "mood": { "yo": "smug" },
-      "quote": { "who": "yo", "text": "Oye... pues esto no suena tan mal 😏" },
-      "card": { "id": "herencia", "type": "receipt", "title": "HERENCIA", "sub": "de la abuela",
-                "rows": [{ "l": "Piso en Cuenca", "v": "1 ud." }, { "l": "Impuesto sucesiones", "v": "0,00 €", "hl": true }], "total": "Todo para ti" } },
-
-    { "text": "Cuarto: fuera la ley de *cambio climático* y la Agenda 2030.",
-      "say": "Cuarto: ¡fuera la ley de cambio climático, y adiós a la Agenda 2030!", "tag": "excited",
-      "cam": "wide", "mood": { "yo": "worried", "otro": "happy" }, "meter": 0.5,
-      "tip": { "n": 4, "label": "Adiós Agenda 2030", "short": "Adiós Agenda 2030" },
-      "fx": [{ "type": "sweat", "on": "yo" }],
-      "card": { "type": "check", "emoji": "🌍", "label": "Agenda 2030", "value": "Derogada", "ok": false } },
-    { "text": "Mientras tanto, agosto en Sevilla: *cuarenta y cinco grados*.",
-      "say": "Mientras tanto... agosto en Sevilla: ¡CUARENTA Y CINCO GRADOS!", "tag": "shouting",
-      "cam": "yo", "mood": { "yo": "pain" }, "fx": [{ "type": "sweat", "on": "yo" }],
-      "card": { "type": "stat", "emoji": "🥵", "label": "Agosto en Sevilla", "value": "45ºC" } },
-
-    { "text": "Quinto: *toros y caza*, protegidos como patrimonio cultural.",
-      "say": "Quinto: toros y caza, ¡protegidos como patrimonio cultural!", "tag": "excited",
-      "cam": "otro", "mood": { "otro": "happy", "yo": "neutral" }, "arm": { "otro": 1 }, "meter": 0.35,
-      "tip": { "n": 5, "label": "Toros y caza", "short": "Toros y caza protegidos" },
-      "card": { "type": "note", "emoji": "🐂", "label": "Patrimonio cultural", "value": "Toros y caza" } },
-
-    { "text": "Pero ojo: sin mayoría absoluta toca *pactar*... y ahí empieza el regateo.",
-      "say": "Pero ojo: sin mayoría absoluta, toca pactar... [laughs] ¡y ahí empieza el regateo!", "tag": "mischievously",
-      "cam": "wide", "mood": { "otro": "worried", "yo": "smug" }, "meter": 0.2,
-      "tip": { "kind": "extra", "label": "La letra pequeña", "short": "Sin mayoría: toca pactar" },
-      "fx": [{ "type": "question", "on": "otro" }],
-      "card": { "type": "versus", "label": "Mesa de negociación", "a": { "emoji": "🟢", "label": "VOX" }, "b": { "emoji": "🔵", "label": "PP" } } },
-    { "text": "Y la cena de Navidad con tu cuñado *ya nunca* será igual.",
-      "say": "¡Y LA CENA DE NAVIDAD CON TU CUÑADO YA NUNCA SERÁ IGUAL!", "tag": "shouting",
-      "cam": "wide", "mood": { "otro": "furious", "yo": "angry" }, "arm": { "otro": 1, "yo": 1 }, "meter": 0.0, "shake": true,
-      "fx": [{ "type": "steam", "on": "otro" }, { "type": "steam", "on": "yo" }],
-      "card": { "type": "check", "emoji": "🎄", "label": "Cena de Navidad", "value": "Cancelada", "ok": false } },
-
-    { "text": "¿Tú qué opinas? ¿A favor o en contra? Te leo en *comentarios*.",
-      "say": "¿Y tú qué opinas? ¿A favor... o en contra? ¡Te leo en comentarios!", "tag": "excited",
-      "cam": "wide", "mood": { "yo": "happy", "otro": "happy" },
-      "fx": [{ "type": "confetti" }],
-      "card": { "type": "summary", "title": "RESUMEN", "sub": "(si Vox ganara con mayoría absoluta)", "marks": false,
-                "cta": "COMENTA 👇", "ctaSub": "¿a favor o en contra?" } }
+    {
+      "text": "¿Qué pasaría si *VOX* ganara las elecciones con mayoría absoluta?",
+      "say": "¿¡Qué pasaría si VOX ganara las elecciones... con MAYORÍA ABSOLUTA!?",
+      "tag": "excited",
+      "cam": "wide",
+      "mood": {
+        "yo": "shocked",
+        "otro": "happy"
+      },
+      "fx": [
+        {
+          "type": "exclaim",
+          "on": "yo"
+        }
+      ],
+      "card": {
+        "type": "title",
+        "title": "Vox gana",
+        "sub": "¿qué cambiaría en España?",
+        "emoji": "🗳️",
+        "color": "#2f9e44"
+      }
+    },
+    {
+      "text": "Todo sale de *su propio programa*. Agárrate.",
+      "say": "Todo esto sale de su propio programa. ¡Agárrate!",
+      "tag": "mischievously",
+      "mood": {
+        "yo": "worried",
+        "otro": "happy"
+      },
+      "card": {
+        "type": "title",
+        "title": "Vox gana",
+        "sub": "¿qué cambiaría en España?",
+        "emoji": "🗳️",
+        "color": "#2f9e44",
+        "tag": "(según sus propuestas)"
+      }
+    },
+    {
+      "text": "Primero: se acabaron las *autonomías*. Un solo gobierno y un solo parlamento.",
+      "say": "Primero: ¡se acabaron las autonomías! Un solo gobierno, y un solo parlamento.",
+      "tag": "excited",
+      "cam": "otro",
+      "mood": {
+        "otro": "happy",
+        "yo": "shocked"
+      },
+      "arm": {
+        "otro": 1
+      },
+      "meter": 0.85,
+      "tip": {
+        "n": 1,
+        "label": "Adiós autonomías",
+        "short": "Adiós autonomías",
+        "kick": "CAMBIO"
+      },
+      "card": {
+        "type": "stat",
+        "emoji": "🏛️",
+        "label": "Parlamentos",
+        "value": "17 → 1",
+        "count": false,
+        "sub": "un solo parlamento para toda España"
+      }
+    },
+    {
+      "text": "¿Y ahora a quién le echo la culpa de la *sanidad*?",
+      "say": "¿Y ahora a quién le echo yo la culpa de la sanidad?",
+      "tag": "sarcastic",
+      "cam": "yo",
+      "talk": "yo",
+      "mood": {
+        "yo": "worried"
+      },
+      "quote": {
+        "who": "yo",
+        "text": "¿Y ahora a quién culpo de la sanidad? 🤔"
+      }
+    },
+    {
+      "text": "Segundo: *deportaciones* y un muro en Ceuta y Melilla.",
+      "say": "Segundo: deportaciones... ¡y un muro en Ceuta y Melilla!",
+      "tag": "excited",
+      "cam": "wide",
+      "mood": {
+        "otro": "happy",
+        "yo": "shocked"
+      },
+      "meter": 0.65,
+      "tip": {
+        "n": 2,
+        "label": "Mano dura en la frontera",
+        "short": "Muro y deportaciones",
+        "kick": "CAMBIO"
+      },
+      "card": {
+        "type": "note",
+        "emoji": "🧱",
+        "label": "Ceuta y Melilla",
+        "value": "Muro infranqueable",
+        "sub": "así lo llama su programa"
+      }
+    },
+    {
+      "text": "Y en las ayudas, *prioridad nacional*: primero los españoles.",
+      "say": "Y en las ayudas sociales, prioridad nacional: ¡primero los españoles!",
+      "tag": "excited",
+      "cam": "otro",
+      "mood": {
+        "otro": "happy"
+      },
+      "arm": {
+        "otro": 1
+      },
+      "fx": [
+        {
+          "type": "sparkle",
+          "on": "otro"
+        }
+      ],
+      "card": {
+        "type": "note",
+        "emoji": "🇪🇸",
+        "label": "Ayudas sociales",
+        "value": "Prioridad nacional"
+      }
+    },
+    {
+      "text": "Tercero: bajada de impuestos y adiós al de *sucesiones*.",
+      "say": "Tercero: ¡bajada de impuestos! Y adiós al impuesto de sucesiones.",
+      "tag": "excited",
+      "cam": "wide",
+      "mood": {
+        "yo": "happy",
+        "otro": "happy"
+      },
+      "meter": 0.75,
+      "tip": {
+        "n": 3,
+        "label": "Impuestos a la baja",
+        "short": "Fuera sucesiones",
+        "kick": "CAMBIO"
+      },
+      "card": {
+        "id": "herencia",
+        "type": "receipt",
+        "title": "HERENCIA",
+        "sub": "de la abuela",
+        "rows": [
+          {
+            "l": "Piso en Cuenca",
+            "v": "1 ud."
+          },
+          {
+            "l": "Impuesto sucesiones",
+            "v": "0,00 €",
+            "hl": true,
+            "new": true
+          }
+        ],
+        "total": "Todo para ti"
+      }
+    },
+    {
+      "text": "Oye... pues esto *no suena tan mal*.",
+      "say": "Oye... [laughs] pues esto no me suena tan mal.",
+      "tag": "laughs",
+      "cam": "yo",
+      "talk": "yo",
+      "mood": {
+        "yo": "smug"
+      },
+      "quote": {
+        "who": "yo",
+        "text": "Oye... pues esto no suena tan mal 😏"
+      },
+      "card": {
+        "id": "herencia",
+        "type": "receipt",
+        "title": "HERENCIA",
+        "sub": "de la abuela",
+        "rows": [
+          {
+            "l": "Piso en Cuenca",
+            "v": "1 ud."
+          },
+          {
+            "l": "Impuesto sucesiones",
+            "v": "0,00 €",
+            "hl": true
+          }
+        ],
+        "total": "Todo para ti"
+      }
+    },
+    {
+      "text": "Cuarto: fuera la ley de *cambio climático* y la Agenda 2030.",
+      "say": "Cuarto: ¡fuera la ley de cambio climático, y adiós a la Agenda 2030!",
+      "tag": "excited",
+      "cam": "wide",
+      "mood": {
+        "yo": "worried",
+        "otro": "happy"
+      },
+      "meter": 0.5,
+      "tip": {
+        "n": 4,
+        "label": "Adiós Agenda 2030",
+        "short": "Adiós Agenda 2030",
+        "kick": "CAMBIO"
+      },
+      "fx": [
+        {
+          "type": "sweat",
+          "on": "yo"
+        }
+      ],
+      "card": {
+        "type": "check",
+        "emoji": "🌍",
+        "label": "Agenda 2030",
+        "value": "Derogada",
+        "ok": false
+      }
+    },
+    {
+      "text": "Mientras tanto, agosto en Sevilla: *cuarenta y cinco grados*.",
+      "say": "Mientras tanto... agosto en Sevilla: ¡CUARENTA Y CINCO GRADOS!",
+      "tag": "shouting",
+      "cam": "yo",
+      "mood": {
+        "yo": "pain"
+      },
+      "fx": [
+        {
+          "type": "sweat",
+          "on": "yo"
+        }
+      ],
+      "card": {
+        "type": "stat",
+        "emoji": "🥵",
+        "label": "Agosto en Sevilla",
+        "value": "45ºC"
+      }
+    },
+    {
+      "text": "Quinto: *toros y caza*, protegidos como patrimonio cultural.",
+      "say": "Quinto: toros y caza, ¡protegidos como patrimonio cultural!",
+      "tag": "excited",
+      "cam": "otro",
+      "mood": {
+        "otro": "happy",
+        "yo": "neutral"
+      },
+      "arm": {
+        "otro": 1
+      },
+      "meter": 0.35,
+      "tip": {
+        "n": 5,
+        "label": "Toros y caza",
+        "short": "Toros y caza protegidos",
+        "kick": "CAMBIO"
+      },
+      "card": {
+        "type": "note",
+        "emoji": "🐂",
+        "label": "Patrimonio cultural",
+        "value": "Toros y caza"
+      }
+    },
+    {
+      "text": "Pero ojo: sin mayoría absoluta toca *pactar*... y ahí empieza el regateo.",
+      "say": "Pero ojo: sin mayoría absoluta, toca pactar... [laughs] ¡y ahí empieza el regateo!",
+      "tag": "mischievously",
+      "cam": "wide",
+      "mood": {
+        "otro": "worried",
+        "yo": "smug"
+      },
+      "meter": 0.2,
+      "tip": {
+        "kind": "extra",
+        "label": "La letra pequeña",
+        "short": "Sin mayoría: toca pactar"
+      },
+      "fx": [
+        {
+          "type": "question",
+          "on": "otro"
+        }
+      ],
+      "card": {
+        "type": "versus",
+        "label": "Mesa de negociación",
+        "a": {
+          "emoji": "🟢",
+          "label": "VOX"
+        },
+        "b": {
+          "emoji": "🔵",
+          "label": "PP"
+        }
+      }
+    },
+    {
+      "text": "Y la cena de Navidad con tu cuñado *ya nunca* será igual.",
+      "say": "¡Y LA CENA DE NAVIDAD CON TU CUÑADO YA NUNCA SERÁ IGUAL!",
+      "tag": "shouting",
+      "cam": "wide",
+      "mood": {
+        "otro": "furious",
+        "yo": "angry"
+      },
+      "arm": {
+        "otro": 1,
+        "yo": 1
+      },
+      "meter": 0.0,
+      "shake": true,
+      "fx": [
+        {
+          "type": "steam",
+          "on": "otro"
+        },
+        {
+          "type": "steam",
+          "on": "yo"
+        }
+      ],
+      "card": {
+        "type": "check",
+        "emoji": "🎄",
+        "label": "Cena de Navidad",
+        "value": "Cancelada",
+        "ok": false
+      }
+    },
+    {
+      "text": "¿Tú qué opinas? ¿A favor o en contra? Te leo en *comentarios*.",
+      "say": "¿Y tú qué opinas? ¿A favor... o en contra? ¡Te leo en comentarios!",
+      "tag": "excited",
+      "cam": "wide",
+      "mood": {
+        "yo": "happy",
+        "otro": "happy"
+      },
+      "fx": [
+        {
+          "type": "confetti"
+        }
+      ],
+      "card": {
+        "type": "summary",
+        "title": "RESUMEN",
+        "sub": "(si Vox ganara con mayoría absoluta)",
+        "marks": false,
+        "cta": "COMENTA 👇",
+        "ctaSub": "¿a favor o en contra?"
+      }
+    }
   ]
 }
