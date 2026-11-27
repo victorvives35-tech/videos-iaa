@@ -10,30 +10,32 @@ import in_this_town as m
 from in_this_town import (W, H, CHARS, npc, avatar, town, sky, block, sticker, font, ease, shake_img, huss_hit)
 
 SCRIPT = [
+    ("", "huss", "solo", 1),  # gancho: HUSS en el primer segundo
     ("In this town, every time you say huss... something magical happens!", "intro", None),
     ("The baker said:", "baker", "solo", 1),
-    ("And all his bread turned into GOLD!", "baker_gold", None),
+    ("And all his bread turned into gold! Now nobody can eat it.", "baker_gold", None),
     ("The mailman said:", "mailman", "solo", 1),
-    ("And he got a FLYING car!", "mailman_car", None),
-    ("Even grandma said:", "grandma", "solo", 1),
-    ("And she started doing backflips!", "grandma_flip", None),
+    ("And he got a flying car! He still delivers late.", "mailman_car", None),
+    ("My grandma said:", "grandma", "solo", 1),
+    ("And she started doing backflips. She's ninety-two.", "grandma_flip", None),
     ("So on my birthday, I took a deep breath, and said:", "me_try", "solo", 1),
     ("And... nothing happened.", "me_fail", None),
     ("I tried again! Louder!", "me_try2", "solo", 3),
-    ("Still nothing. Everyone called me the broken huss kid.", "laugh", None),
+    ("Still nothing. A pigeon pooped on my head.", "me_fail", None),
     ("That night, I went to the basketball court... and whispered:", "night", "solo", 1),
-    ("And a golden basketball fell from the sky!", "goldball", None),
+    ("And a golden basketball fell from the sky! Right on my face.", "goldball", None),
     ("It was the legendary HUSS BALL! Whoever holds it gets every power in town!", "reveal", None),
     ("I bounced it once... and the whole town started floating!", "float", None),
-    ("The gold bread flew away! The flying car crashed into a tree! Grandma was upside down!", "chaos", None),
-    ("I had to fix it. So I held the ball up high... and said:", "hold", None),
+    ("The gold bread flew away! The flying car crashed! Grandma was upside down... and loving it.", "chaos", None),
+    ("So I held the ball up high... and said:", "hold", None),
     ("", "huss", "solo", 6),
-    ("Everything came back down... and the ball started glowing!", "land", None),
-    ("Now I'm the official guardian of the Huss Ball!", "guardian", None),
-    ("The baker made me a golden cake! And the mailman flew me home!", "baker_gold", None),
-    ("And everyone in this town says:", "crowd", "crowd", 6),
-    ("But tonight... someone is coming to steal it.", "thief", None),
-    ("Who is it? Follow for part two!", "cta2", None),
+    ("Everything came back down! I was a hero!", "land", None),
+    ("But that night, a ninja broke into my room... and stole the Huss Ball!", "thief", None),
+    ("I chased him across the whole town. He was really fast for a ninja.", "chase", None),
+    ("I finally cornered him, and said:", "corner", "solo", 6),
+    ("The ninja slowly took off his mask...", "unmask", None),
+    ("It was grandma. She just wanted to play basketball.", "grandma_ball", None),
+    ("Now we play every night. She still wins. And that's why, in this town...", "grandma_ball", None),
 ]
 
 C = dict(CHARS)
@@ -196,7 +198,15 @@ def scene(seg, t, T):
         for q in range(14):
             x = cx + rnd.randint(-150, 150); y = 720 + rnd.randint(0, 400)
             d.line([x, y, x - 5, y + 35], fill=(120, 170, 255), width=5)
-        if u > .4:
+        if "pigeon" in seg["text"]:
+            px = -100 + (W + 200) * u
+            d.ellipse([px - 50, 420, px + 50, 480], fill=(150, 150, 160)); d.ellipse([px + 30, 400, px + 75, 445], fill=(150, 150, 160))
+            d.polygon([(px - 20, 440), (px + 20, 380 + 30 * math.sin(T * 30)), (px + 30, 440)], fill=(120, 120, 130))
+            if u > .55:
+                hy = GY - 62 * 4 - 62 * 1.25 * 1.05
+                d.ellipse([W/2 - 30, hy - 25, W/2 + 30, hy + 15], fill=(250, 250, 250), outline=(200, 200, 200), width=3)
+                sticker(img, "BRUH", W/2, 380, 140, (90, 90, 110), rot=-4)
+        elif u > .4:
             sticker(img, "NOTHING", W/2, 380, 130, (90, 90, 110), rot=-4)
         # grillo
         if int(T * 6) % 2 == 0 and u > .4:
@@ -308,11 +318,85 @@ def scene(seg, t, T):
         d.rectangle([0, 1450, W, H], fill=(30, 30, 40))
         x = -200 + (W/2 + 300) * ease(min(1, u / .7))
         avatar(d, x, GY, 70, C["thief"], T, .6, "out", "angry", look=-1)
+        if u > .2:
+            glow(img, x + 200, GY - 330, 120); d = ImageDraw.Draw(img); ball(d, x + 200, GY - 330, 50, gold=True)
         for e in (-1, 1):  # ojos rojos brillantes
             hy = GY - 70 * 4 - 70 * 1.25 * 1.05
             d.ellipse([x + e * 22 - 12, hy + 30, x + e * 22 + 12, hy + 52], fill=(255, 30, 30))
         if u > .5:
-            sticker(img, "???", W/2, 450, 180, (0, 0, 0), fg=(255, 40, 40), rot=-5, scale=1 + .05 * math.sin(t * 9))
+            sticker(img, "NINJA", W/2, 450, 160, (0, 0, 0), fg=(255, 40, 40), rot=-5, scale=1 + .05 * math.sin(t * 9))
+
+    elif sc == "chase":
+        town(img, T, tint="night", cam=t * 1200)
+        d = ImageDraw.Draw(img)
+        for k2 in range(12):
+            y = 950 + k2 * 40; d.line([0, y, W, y], fill=(255, 255, 255, 120), width=3)
+        tx = 750 + 40 * math.sin(T * 3)
+        avatar(d, tx, GY, 60, C["thief"], T * 2.5, 1.6, "out", "angry", look=1)
+        ball(d, tx + 170, GY - 290 + 20 * math.sin(T * 20), 45, gold=True)
+        avatar(d, 280, GY, 60, C["me"], T * 2.5, 1.6, "out", "yell", look=1)
+        if u > .55:
+            sticker(img, "FAST NINJA", W/2, 450, 120, (240, 60, 60), rot=-5)
+        amp = 5
+
+    elif sc == "corner":
+        k, hit = huss_hit(seg, T) if seg["huss_t0"] else (-1, 0)
+        sky(img, (10, 10, 30), (40, 20, 60)); d = ImageDraw.Draw(img)
+        for yy in range(300, 1450, 70):  # muro de ladrillo
+            for xx in range(-60 * ((yy // 70) % 2), W, 140):
+                d.rectangle([xx + 620, yy, xx + 750, yy + 62], fill=(130, 60, 50))
+        d.rectangle([0, 1450, W, H], fill=(40, 40, 50))
+        back = 25 * (k + 1) if k >= 0 else 0
+        avatar(d, 830 + back, GY, 62, C["thief"], T, 0, "up" if k >= 0 else "out", "shock" if k >= 0 else "angry", look=-1)
+        z = 1 + .15 * hit
+        avatar(d, 330, GY, 66 * z, C["me"], T, 0, "out", "yell" if hit > .2 else "angry", look=1)
+        if k >= 0 and k < seg["nh"]:
+            sticker(img, "HUSS!", W/2, 430, 140, (40, 90, 210), rot=-8 + 4 * k, scale=1 + .4 * hit)
+        img.alpha_composite(Image.new("RGBA", (W, H), (255, 255, 255, int(90 * hit))))
+        amp = int(30 * hit)
+
+    elif sc == "unmask":
+        sky(img, (10, 10, 30), (40, 20, 60)); d = ImageDraw.Draw(img)
+        d.rectangle([0, 1450, W, H], fill=(40, 40, 50))
+        z = 1 + .9 * ease(u)
+        sz = 70 * z; gy = GY + 420 * (z - 1)
+        reveal = u > .75
+        top = avatar(d, W/2, gy, sz, C["grandma"] if reveal else C["thief"], T, 0, "up" if not reveal else "out",
+                     "smile" if reveal else "flat")
+        if reveal:
+            granny(d, W/2, top, sz)
+            img.alpha_composite(Image.new("RGBA", (W, H), (255, 255, 255, int(200 * max(0, 1 - (u - .75) * 8)))))
+        else:
+            mh = sz * 1.25 * (1 - min(1, u / .75) * .6)  # máscara subiendo
+            d.rectangle([W/2 - sz * .65, top - 4, W/2 + sz * .65, top + mh], fill=(15, 15, 20))
+            for e in (-1, 1):
+                d.ellipse([W/2 + e * sz * .28 - 14, top + sz * .4, W/2 + e * sz * .28 + 14, top + sz * .6], fill=(255, 255, 255))
+        sticker(img, "WHO IS IT???", W/2, 360, 110, (0, 0, 0), fg=(255, 230, 40), rot=-4)
+
+    elif sc == "grandma_ball":
+        sky(img, (10, 15, 50), (40, 30, 90)); d = ImageDraw.Draw(img)
+        rnd = random.Random(1)
+        for q in range(60):
+            x, y = rnd.randint(0, W), rnd.randint(0, 1000)
+            d.ellipse([x - 3, y - 3, x + 3, y + 3], fill=(255, 255, 230))
+        d.rectangle([0, 1400, W, H], fill=(40, 70, 130)); d.line([0, 1600, W, 1600], fill=(200, 200, 230), width=8)
+        d.rectangle([860, 600, 880, 1400], fill=(80, 80, 80)); block(d, [700, 520, 900, 660], (220, 220, 230))
+        d.rectangle([720, 680, 860, 692], fill=(240, 80, 30))
+        ph = (t * .9) % 1
+        gx = 300 + 480 * ph; gy = GY - math.sin(ph * math.pi) * 700
+        lay = Image.new("RGBA", (W, H), (0, 0, 0, 0)); ld = ImageDraw.Draw(lay)
+        top = avatar(ld, gx, gy, 52, C["grandma"], T, 0, "up", "laugh"); granny(ld, gx, top, 52)
+        lay = lay.rotate(-360 * ph, center=(gx, gy - 150), resample=Image.BICUBIC); img.alpha_composite(lay)
+        d = ImageDraw.Draw(img)
+        glow(img, gx + 20, top - 60 if False else gy - 420, 90); d = ImageDraw.Draw(img)
+        ball(d, gx + 20, gy - 420, 45, gold=True)
+        avatar(d, 160, GY, 58, C["me"], T, 0, "down", "shock", look=1)
+        if "wins" in seg["text"]:
+            sticker(img, "GRANDMA 99 - ME 0", W/2, 330, 90, (170, 90, 160), rot=-4)
+            if u > .65:
+                sticker(img, "IN THIS TOWN...", W/2, 560, 110, (30, 30, 30), rot=3)
+        else:
+            sticker(img, "IT WAS GRANDMA", W/2, 380, 110, (170, 90, 160), rot=-5, scale=1 + .05 * math.sin(t * 9))
 
     elif sc == "cta2":
         sky(img, (255, 40, 90), (120, 30, 200)); d = ImageDraw.Draw(img)

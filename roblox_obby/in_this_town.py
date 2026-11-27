@@ -13,28 +13,28 @@ from make_video import (W, H, FPS, SR, font, sky, block, sticker, outlined_text,
 N_HUSS = 6
 # (texto, escena, huss)  huss: None | "solo" | "crowd"
 SCRIPT = [
-    ("In this town, every single kid gets a superpower on their tenth birthday!", "town", None),
-    ("My best friend? Super speed!", "speed", None),
-    ("My sister? She can fly!", "fly", None),
-    ("My cousin? He can turn invisible!", "invisible", None),
+    ("", "huss", "solo", 1),  # gancho: HUSS en el primer segundo
+    ("In this town, every kid gets a superpower on their tenth birthday!", "town", None),
+    ("My best friend got super speed. He finishes his homework before the teacher even gives it.", "speed", None),
+    ("My sister can fly. She only uses it to steal snacks from the top shelf.", "fly", None),
+    ("My cousin can turn invisible. We haven't seen him since 2019.", "invisible", None),
     ("And me?! I got... the HUSS!", "me", "solo", 6),
-    ("Everyone laughed at me! Nobody knew what it did!", "laugh", None),
-    ("At school, they called me Huss Boy. Even my teacher laughed at me!", "school", None),
-    ("So I trained. Every single day. At the park, at the court, even in the shower!", "train", "solo", 3),
-    ("Until one day... a giant monster attacked the town!", "monster", None),
-    ("It smashed the bakery! It stepped on the mailman! It ate the school bus!", "monster", None),
-    ("My best friend ran at it super fast... and got launched into space!", "friend_fail", None),
-    ("My sister flew at it... and got stuck in a tree!", "sister_fail", None),
-    ("Everyone ran away! But I stood still... and I said:", "stand", None),
+    ("Everyone laughed at me. Even my dog laughed at me.", "laugh", None),
+    ("At school they called me Huss Boy. My teacher gave me an F. F for Huss.", "school", None),
+    ("So I trained every single day. At the park. At the court. Even in the shower.", "train", "solo", 3),
+    ("My neighbors moved out.", "neighbors", None),
+    ("Until one day, a giant monster attacked the town! It ate the school bus! Luckily, it was Saturday.", "monster", None),
+    ("My best friend ran at it super fast... and got launched into space. He's still up there.", "friend_fail", None),
+    ("My sister flew at it... and got stuck in a tree. Again.", "sister_fail", None),
+    ("Everyone ran away. But I stood still. Mostly because my legs stopped working. And I said:", "stand", None),
     ("", "huss", "solo", 6),
-    ("The monster stopped... and started DANCING!", "dance", None),
-    ("The mayor gave me a golden medal! I was a hero!", "medal", None),
+    ("The monster stopped... and started dancing!", "dance", None),
+    ("The mayor gave me a golden medal! It was chocolate. I ate it.", "medal", None),
     ("And now, everyone in this town says:", "crowd", "crowd", 6),
-    ("But then... the ground started shaking. It was the monster's MOM!", "mom", None),
-    ("She was ten times bigger! So I took a deep breath... and said:", "mom", None),
-    ("", "huss", "solo", 6),
-    ("But she didn't even blink. She just... smiled.", "mom_smile", None),
-    ("Will the huss work on her? Follow for part two!", "cta", None),
+    ("But then, the monster's mom showed up. She was ten times bigger! She looked at me... and said:", "mom", None),
+    ("", "mom_huss", "deep", 3),
+    ("Turns out... she invented the huss.", "mom_smile", None),
+    ("Now I babysit her son every Saturday. And that's why, in this town...", "friends", None),
 ]
 
 # ---------------------------------------------------------------- audio
@@ -80,9 +80,14 @@ def chant_cut(nh):
     c = HUSS_SEQ[:end].copy(); f = min(len(c), int(.02 * SR)); c[-f:] *= np.linspace(1, 0, f)
     return c, HUSS_HITS[:nh]
 
-def huss_chant(crowd, nh):
+def huss_chant(mode, nh):
+    crowd = mode == "crowd"
+    if mode == "deep":  # HUSS de gigante: más grave y lento
+        c, hits = chant_cut(nh); f = .7
+        v = repitch(c, f) * 1.1
+        return np.concatenate([v, np.zeros(int(.4 * SR), np.float32)]), [h / f for h in hits]
     if nh > len(HUSS_HITS):  # más de 6: encadena secuencias
-        a, h = huss_chant(crowd, len(HUSS_HITS)); b, h2 = huss_chant(crowd, nh - len(HUSS_HITS))
+        a, h = huss_chant(mode, len(HUSS_HITS)); b, h2 = huss_chant(mode, nh - len(HUSS_HITS))
         off = len(a) / SR + .1
         return np.concatenate([a, np.zeros(int(.1 * SR), np.float32), b]), h + [x + off for x in h2]
     c, hits = chant_cut(nh)
@@ -144,7 +149,7 @@ def build(voice, tmp):
         huss_t0 = None; hits = []
         if huss:
             huss_t0 = cur + len(audio) / SR + (.6 if txt else 0)
-            chant, hits_rel = huss_chant(huss == "crowd", nh)
+            chant, hits_rel = huss_chant(huss, nh)
             hits = [huss_t0 + h for h in hits_rel]
             pad = np.zeros(int((huss_t0 - cur) * SR) - len(audio), np.float32)
             audio = np.concatenate([audio, pad, chant])
@@ -356,6 +361,7 @@ def render_scene(seg, t, T):
             d.line([0, y, W/2 - 100, y], fill=(255, 255, 255), width=6)
         avatar(d, W/2, GY, 60, CHARS["friend"], T * 2, 1.6, "out", "smile", look=1)
         sticker(img, "SUPER SPEED", W/2, 560, 120, (240, 60, 60), rot=-5, scale=1 + .05*math.sin(t*12))
+        if u > .5: sticker(img, "HOMEWORK: DONE", W/2, 780, 80, (40, 200, 90), rot=4)
         amp = 6
 
     elif sc == "fly":
@@ -367,6 +373,10 @@ def render_scene(seg, t, T):
             sx, sy = W/2 + r * math.cos(a), y - 220 + r * .6 * math.sin(a)
             d.regular_polygon((sx, sy, 16), 4, rotation=t * 90, fill=(255, 240, 120))
         sticker(img, "FLYING", W/2, 560, 130, (255, 120, 200), rot=4)
+        if u > .55:
+            sticker(img, "SNACK THIEF", W/2, 330, 90, (240, 140, 30), rot=-5)
+            block(d, [W/2 + 70, y - 330, W/2 + 170, y - 200], (240, 60, 60))
+            d.text((W/2 + 120, y - 265), "CHIPS", font=font(28), fill=(255, 255, 255), anchor="mm")
 
     elif sc == "me":
         rv = seg["reveal"] or (seg["start"] + dur)
@@ -507,13 +517,15 @@ def render_scene(seg, t, T):
         img.alpha_composite(layer)
         if u > .5:
             sticker(img, "INVISIBLE", W/2, 560, 130, (90, 90, 110), rot=-4, scale=1 + .04 * math.sin(t * 9))
+        if u > .7:
+            sticker(img, "MISSING SINCE 2019", W/2, 800, 75, (255, 255, 255), fg=(240, 60, 60), rot=3)
 
     elif sc == "school":
         sky(img, (250, 240, 220), (230, 215, 190))
         d = ImageDraw.Draw(img)
         block(d, [90, 300, W - 90, 760], (40, 80, 60))  # pizarra
         d.text((W/2, 450), "HUSS BOY", font=font(130), fill=(255, 255, 255), anchor="mm")
-        d.text((W/2, 610), "LOL", font=font(90), fill=(255, 220, 120), anchor="mm")
+        d.text((W/2, 610), "GRADE: F" if u > .45 else "LOL", font=font(90), fill=(255, 220, 120), anchor="mm")
         d.rectangle([0, 1450, W, H], fill=(170, 120, 80))
         avatar(d, 170, 1450, 55, CHARS["teacher"], T, 0, "down", "laugh", look=1)
         for i, x in enumerate([420, 640, 860]):
@@ -582,6 +594,7 @@ def render_scene(seg, t, T):
             if v > .6:
                 d.regular_polygon((W/2 - 160, 260, 40 + 20 * math.sin(T * 20)), 4, rotation=45, fill=(255, 255, 255))
             sticker(img, "BYE BYE", W/2, 760, 120, (240, 60, 60), rot=5)
+            if v > .7: sticker(img, "STILL UP THERE", W/2, 950, 70, (20, 20, 60), rot=-4)
             amp = int(15 * max(0, 1 - v * 3))
 
     elif sc == "sister_fail":
@@ -596,6 +609,7 @@ def render_scene(seg, t, T):
             for k2 in range(5):
                 d.ellipse([120 + k2 * 70, 720 + (k2 % 2) * 60, 170 + k2 * 70, 770 + (k2 % 2) * 60], fill=(30, 110, 30))
             sticker(img, "STUCK", 600, 600, 130, (40, 160, 60), rot=-6)
+            if u > .75: sticker(img, "AGAIN", 620, 800, 90, (255, 220, 40), rot=5)
 
     elif sc == "medal":
         sky(img, (120, 200, 255), (255, 240, 200))
@@ -617,6 +631,45 @@ def render_scene(seg, t, T):
                 y = (rnd.uniform(-H, 0) + t * sp) % (H + 100) - 50
                 d.rectangle([x0, y, x0 + 18, y + 30], fill=rnd.choice([(255, 60, 90), (60, 200, 255), (255, 220, 40), (120, 255, 120)]))
             sticker(img, "HERO", W/2, 450, 160, (255, 210, 40), rot=-5, scale=1 + .05 * math.sin(t * 9))
+            if u > .6: sticker(img, "IT WAS CHOCOLATE", W/2, 650, 70, (110, 60, 30), rot=4)
+
+    elif sc == "neighbors":
+        d = town(img, T)
+        d.rectangle([W/2 - 10, 1150, W/2 + 10, 1450], fill=(110, 70, 40))
+        block(d, [W/2 - 170, 1030, W/2 + 170, 1180], (255, 255, 255))
+        d.text((W/2, 1105), "FOR SALE", font=font(62), fill=(220, 30, 30), anchor="mm")
+        tx = W - 200 + 900 * ease(max(0, u - .3) / .7)
+        block(d, [tx - 160, 1180, tx + 160, 1400], (240, 240, 240)); block(d, [tx + 160, 1260, tx + 260, 1400], (60, 120, 220))
+        d.text((tx, 1290), "MOVING", font=font(48), fill=(40, 40, 40), anchor="mm")
+        for wx in (tx - 90, tx + 200):
+            d.ellipse([wx - 40, 1370, wx + 40, 1450], fill=(30, 30, 30))
+        sticker(img, "SOLD", W/2, 500, 150, (220, 30, 30), rot=-8, scale=1 + .05 * math.sin(t * 9))
+
+    elif sc == "mom_huss":
+        k, hit = huss_hit(seg, T)
+        d = town(img, T, tint="night")
+        z = 1.2 + .25 * hit
+        avatar(d, W/2, GY + 700 * (z - 1.2) + 240, 200 * z, CHARS["mom"], T * .3, 0, "out", "yell" if hit > .2 else "angry")
+        blown = 60 * (k + 1) if k >= 0 else 0
+        avatar(d, 150 - blown, GY, 45, CHARS["me"], T, 0, "up", "shock", look=1)
+        if k >= 0:
+            for j in range(k + 1):
+                sticker(img, "HUSS", W/2 + (j - 1) * 260, 380 + (j % 2) * 120, 150, (180, 30, 120), rot=-10 + 10 * j,
+                        scale=1 + (.4 * hit if j == k else 0))
+        img.alpha_composite(Image.new("RGBA", (W, H), (255, 0, 80, int(70 * hit))))
+        amp = int(45 * hit)
+
+    elif sc == "friends":
+        town(img, T)
+        d = ImageDraw.Draw(img)
+        bob = abs(math.sin(T * 5)) * 20
+        top = avatar(d, W/2 + 120, GY, 130, CHARS["monster"], T, 0, "up", "smile", look=-1)
+        avatar(d, W/2 - 260, GY - bob, 60, CHARS["me"], T, 0, "up", "smile", look=1)
+        block(d, [W/2 + 40, top + 40, W/2 + 200, top + 110], (255, 255, 255))  # babero
+        d.text((W/2 + 120, top + 75), "BABY", font=font(34), fill=(255, 90, 170), anchor="mm")
+        sticker(img, "BABYSITTER", W/2, 420, 120, (255, 120, 200), rot=-5)
+        if u > .65:
+            sticker(img, "IN THIS TOWN...", W/2, 650, 110, (30, 30, 30), rot=3)
 
     elif sc == "mom_smile":
         d = town(img, T, tint="night")
