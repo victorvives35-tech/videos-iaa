@@ -463,7 +463,8 @@ def render_scene(seg, t, T):
                     jump = 50 * hit
                     avatar(d, x, y - jump, s, c, T, 0, "up" if hit > .2 else "down", "yell" if hit > .2 else "smile")
             # el monstruo también
-            avatar(d, 120, 1490 - 40 * hit, 70, CHARS["monster"], T, 0, "dance", "smile", look=1)
+            if not seg.get("no_monster"):
+                avatar(d, 120, 1490 - 40 * hit, 70, CHARS["monster"], T, 0, "dance", "smile", look=1)
         random.seed(k * 7 + 3)
         for j in range(max(0, min(k + 1, seg["nh"]))):  # HUSS acumulados en pantalla
             x = random.randint(250, W - 250); y = random.randint(260, 540)
