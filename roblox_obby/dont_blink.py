@@ -16,6 +16,7 @@ RED = (255, 40, 40)
 HOST = dict(head=(255, 205, 160), torso=(30, 30, 40), legs=(30, 30, 40), hair=(240, 200, 60), logo=(255, 40, 200))
 MOM = dict(head=(255, 205, 160), torso=(230, 90, 120), legs=(80, 60, 120), hair=(110, 60, 30), logo=None, long_hair=True)
 FLOOR = 1450
+STUDIO_TITLE = "DON'T BLINK"
 
 SCRIPT = [
     ("In this town, there's a TV show called Don't Blink.", "intro", None),
@@ -66,7 +67,7 @@ def studio(img, T):
         bd.polygon([(x - 20, 0), (x + 20, 0), (x + 160 + sw, FLOOR), (x - 160 + sw, FLOOR)], fill=(255, 120, 230, 22))
         img.alpha_composite(beam)
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 230, W, 300], fill=(15, 10, 35)); d.text((W / 2, 265), "DON'T BLINK", font=font(52), fill=NEON, anchor="mm")
+    d.rectangle([0, 230, W, 300], fill=(15, 10, 35)); d.text((W / 2, 265), STUDIO_TITLE, font=font(52), fill=NEON, anchor="mm")
     d.rectangle([0, FLOOR, W, H], fill=(50, 30, 70))
     for q in range(0, W, 90): d.rectangle([q, FLOOR, q + 45, FLOOR + 30], fill=PINK)
     return d
