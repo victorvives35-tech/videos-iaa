@@ -13,23 +13,24 @@ from make_video import (W, H, FPS, SR, font, sky, block, sticker, outlined_text,
 N_HUSS = 6
 # (texto, escena, huss)  huss: None | "solo" | "crowd"
 SCRIPT = [
-    ("In this town, every kid gets a superpower on their tenth birthday.", "town", None),
-    ("My best friend got super speed.", "speed", None),
-    ("My sister got to fly.", "fly", None),
-    ("And me? I got...", "me", "solo"),
-    ("Everyone laughed at me. Nobody knew what it did.", "laugh", None),
-    ("Until one day, a giant monster attacked the town.", "monster", None),
-    ("Everyone ran away. But I stood still, and I said:", "stand", None),
+    ("In this town, every single kid gets a superpower on their tenth birthday!", "town", None),
+    ("My best friend? Super speed!", "speed", None),
+    ("My sister? She can fly!", "fly", None),
+    ("And me?! I got... the HUSS!", "me", "solo"),
+    ("Everyone laughed at me! Nobody knew what it did!", "laugh", None),
+    ("Until one day... a giant monster attacked the town!", "monster", None),
+    ("Everyone ran away! But I stood still... and I said:", "stand", None),
     ("", "huss", "solo"),
-    ("The monster stopped... and started dancing.", "dance", None),
-    ("Now everyone in this town says:", "crowd", "crowd"),
-    ("Follow for part two.", "cta", None),
+    ("The monster stopped... and started DANCING!", "dance", None),
+    ("And now, everyone in this town says:", "crowd", "crowd"),
+    ("Follow for part two!", "cta", None),
 ]
 
 # ---------------------------------------------------------------- audio
-def tts(voice, text, path, tmp, rate=1.0, ls="0.85", extra=""):
+def tts(voice, text, path, tmp, rate=1.0, ls="0.85", extra="", ns="0.667", nw="0.8"):
     raw = path + ".raw.wav"
-    subprocess.run(["piper", "-m", voice, "--length-scale", ls, "-f", raw],
+    subprocess.run(["piper", "-m", voice, "--length-scale", ls, "--noise-scale", ns, "--noise-w", nw,
+                    "--sentence-silence", "0.08", "-f", raw],
                    input=text.encode(), check=True, capture_output=True)
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", raw, "-af",
                     f"asetrate=22050*{rate},aresample=44100{extra},acompressor=threshold=-18dB:ratio=4,volume=1.5",
@@ -43,7 +44,7 @@ def repitch(a, f):
     n = int(len(a) / f)
     return np.interp(np.arange(n) * f, np.arange(len(a)), a).astype(np.float32)
 
-HUSS_STEP = 0.46
+HUSS_STEP = 0.30
 
 def huss_chant(hclip, crowd):
     n = int(SR * (HUSS_STEP * N_HUSS + .6))
@@ -93,22 +94,31 @@ def build(voice, tmp):
     for i, (txt, scene, huss) in enumerate(SCRIPT):
         audio = np.zeros(0, np.float32); words = []
         if txt:
-            audio = tts(voice, txt, os.path.join(tmp, f"l{i}.wav"), tmp, rate=1.0)
+            # narrador con energía: más rápido, algo más agudo, entonación más variada y con presencia
+            audio = tts(voice, txt, os.path.join(tmp, f"l{i}.wav"), tmp, rate=1.09, ls="0.84", ns="0.9", nw="1.0",
+                        extra=",equalizer=f=3000:t=q:w=1:g=4,equalizer=f=200:t=q:w=1:g=2")
             ws = txt.split(); wts = [len(w.strip(".,?!:")) + 2 for w in ws]
             tot, acc, d = sum(wts), 0, len(audio) / SR
             for w, wt in zip(ws, wts):
                 words.append((w, cur + d * acc / tot, cur + d * (acc + wt) / tot)); acc += wt
         huss_t0 = None
         if huss:
-            huss_t0 = cur + len(audio) / SR + (.15 if txt else 0)
+            huss_t0 = cur + len(audio) / SR + (.6 if txt else 0)
             chant = huss_chant(hclip, huss == "crowd")
             pad = np.zeros(int((huss_t0 - cur) * SR) - len(audio), np.float32)
             audio = np.concatenate([audio, pad, chant])
             words += [("HUSS", huss_t0 + k * HUSS_STEP, huss_t0 + (k + 1) * HUSS_STEP) for k in range(N_HUSS)]
+        reveal = next((a for w, a, b in words if w.strip(".,!?").upper() == "HUSS"), None)
         segs.append(dict(text=txt, scene=scene, start=cur, dur=len(audio) / SR, audio=audio,
-                         words=words, huss_t0=huss_t0, huss=huss))
+                         words=words, huss_t0=huss_t0, huss=huss, reveal=reveal))
         cur += len(audio) / SR + gap
     return segs, cur + .5
+
+def riser(d):
+    n = int(SR * d); t = np.arange(n) / SR
+    f = 200 + 1400 * (t / d) ** 2
+    tone = np.sin(2 * np.pi * np.cumsum(f) / SR) * .25
+    return ((tone + .3 * bandnoise(n, 2000, 9000)) * (t / d) ** 2).astype(np.float32)
 
 def mix_audio(segs, total, out_wav):
     n = int(total * SR) + SR
@@ -125,6 +135,8 @@ def mix_audio(segs, total, out_wav):
         if s["huss"]:
             for k in range(N_HUSS):
                 put(fx, sfx("boom") * .3, s["huss_t0"] + k * HUSS_STEP)
+        if sc == "me" and s["reveal"]:
+            put(fx, riser(1.2), max(0, s["reveal"] - 1.2)); put(fx, sfx("boom"), s["reveal"]); put(fx, sfx("ding") * .8, s["reveal"])
         if sc == "dance": put(fx, sfx("ding"), st + .8)
         if sc == "cta": put(fx, sfx("pop"), st)
     m = music(n) * .5
@@ -281,11 +293,70 @@ def render_scene(seg, t, T):
         sticker(img, "FLYING", W/2, 560, 130, (255, 120, 200), rot=4)
 
     elif sc == "me":
-        d = town(img, T)
-        z = 1 + .6 * ease(u)
-        avatar(d, W/2, GY + 200 * (z - 1), 60 * z, CHARS["me"], T, 0, "down", "flat" if u < .7 else "shock")
-        if u > .7:
-            sticker(img, "THE HUSS???", W/2, 520, 140, (130, 130, 130), rot=-6, scale=1 + .05*math.sin(t*10))
+        rv = seg["reveal"] or (seg["start"] + dur)
+        pre = T < rv
+        if pre:
+            # suspense: el pueblo mira, se apaga la luz y un foco cae sobre él
+            d = town(img, T)
+            for i, x in enumerate([110, 290, 790, 970]):
+                avatar(d, x, GY, 36, npc(i + 30), T, 0, "down", "shock", look=1 if x < W/2 else -1)
+            k = ease((T - seg["start"]) / max(.1, rv - seg["start"]))
+            z = 1 + .55 * k
+            img.alpha_composite(Image.new("RGBA", (W, H), (0, 0, 0, int(190 * k))))
+            beam = Image.new("RGBA", (W, H), (0, 0, 0, 0)); bd = ImageDraw.Draw(beam)
+            bd.polygon([(W/2 - 90, 0), (W/2 + 90, 0), (W/2 + 330, GY + 60), (W/2 - 330, GY + 60)],
+                       fill=(255, 250, 200, int(120 * k)))
+            img.alpha_composite(beam)
+            d = ImageDraw.Draw(img)
+            d.ellipse([W/2 - 330, GY + 20, W/2 + 330, GY + 100], fill=(255, 250, 200))
+            avatar(d, W/2, GY + 60 * (z - 1), 60 * z, CHARS["me"], T, 0, "down", "flat" if k < .8 else "shock")
+            sticker(img, "AND ME???", W/2, 400, 130, (30, 30, 30), rot=-5, scale=1 + .04 * math.sin(t * 9))
+            if k > .55:  # caja misteriosa temblando
+                bx, by = W/2, 700 + 10 * math.sin(T * 40)
+                block(d, [bx - 120, by - 110, bx + 120, by + 110], (130, 40, 220))
+                d.rectangle([bx - 18, by - 110, bx + 18, by + 110], fill=(255, 210, 40))
+                d.rectangle([bx - 120, by - 18, bx + 120, by + 18], fill=(255, 210, 40))
+                d.text((bx, by), "?", font=font(150), fill=(255, 255, 255), anchor="mm", stroke_width=8, stroke_fill=(0, 0, 0))
+            amp = int(10 * max(0, k - .6) / .4)
+        else:
+            # ¡REVELACIÓN! fondo legendario, rayos, partículas y carta de poder
+            r = T - rv
+            sky(img, (40, 10, 90), (200, 40, 160))
+            d = ImageDraw.Draw(img)
+            for q in range(20):
+                a = q * math.pi / 10 + T * .8
+                d.polygon([(W/2, 1000), (W/2 + 2300*math.cos(a), 1000 + 2300*math.sin(a)),
+                           (W/2 + 2300*math.cos(a + .14), 1000 + 2300*math.sin(a + .14))], fill=(255, 200, 60))
+            rnd = random.Random(5)
+            for q in range(40):  # chispas que salen del centro
+                a = rnd.uniform(0, 6.28); sp = rnd.uniform(500, 1400)
+                dist = (r * sp + rnd.uniform(0, 600)) % 1100
+                px, py = W/2 + math.cos(a) * dist, 1000 + math.sin(a) * dist
+                d.regular_polygon((px, py, rnd.randint(8, 20)), 4, rotation=T * 200, fill=(255, 255, 220))
+            pz = min(1, r / .18)
+            sz = 95 * (.4 + .6 * pz) * (1 + .12 * max(0, 1 - r / .3))
+            ball_y = 1530 - abs(math.sin(T * 9)) * 160
+            avatar(d, W/2, 1580, sz, CHARS["me"], T, 0, "up", "yell")
+            d.ellipse([W/2 + 210, ball_y - 60, W/2 + 330, ball_y + 60], fill=(240, 120, 30), outline=(40, 20, 10), width=6)
+            d.line([W/2 + 270, ball_y - 60, W/2 + 270, ball_y + 60], fill=(40, 20, 10), width=5)
+            d.arc([W/2 + 180, ball_y - 60, W/2 + 270, ball_y + 60], -90, 90, fill=(40, 20, 10), width=5)
+            # carta de poder
+            cs = min(1, r / .22)
+            cw, ch = 620 * cs, 300 * cs
+            cy = 520
+            if cs > .05:
+                d.rounded_rectangle([W/2 - cw/2, cy - ch/2, W/2 + cw/2, cy + ch/2], radius=int(40 * cs),
+                                    fill=(255, 210, 40), outline=(0, 0, 0), width=10)
+                if cs > .5: d.rounded_rectangle([W/2 - cw/2 + 18, cy - ch/2 + 18, W/2 + cw/2 - 18, cy + ch/2 - 18],
+                                    radius=int(30 * cs), outline=(255, 255, 255), width=5)
+                if cs > .9:
+                    d.text((W/2, cy - 80), "NEW POWER", font=font(52), fill=(80, 30, 0), anchor="mm")
+                    d.text((W/2, cy + 10), "HUSS", font=font(150), fill=(40, 90, 210), anchor="mm",
+                           stroke_width=8, stroke_fill=(255, 255, 255))
+                    d.text((W/2, cy + 105), "★ LEGENDARY ★", font=font(44), fill=(200, 40, 120), anchor="mm")
+            if r < .12:
+                img.alpha_composite(Image.new("RGBA", (W, H), (255, 255, 255, int(230 * (1 - r / .12)))))
+            amp = int(28 * max(0, 1 - r / .4))
 
     elif sc == "laugh":
         d = town(img, T)
@@ -320,14 +391,20 @@ def render_scene(seg, t, T):
         beat = (T - seg["huss_t0"]) % HUSS_STEP if k >= 0 else 1
         hit = max(0, 1 - beat / .15) if 0 <= k < N_HUSS else 0
         if sc == "huss":
-            sky(img, (255, 210, 40), (255, 90, 30))
+            pal = [((255, 210, 40), (255, 90, 30), (255, 240, 120)), ((40, 160, 255), (20, 40, 160), (120, 210, 255)),
+                   ((255, 60, 120), (130, 20, 90), (255, 150, 190)), ((130, 255, 90), (20, 130, 60), (210, 255, 160))]
+            top, bot, ray = pal[max(0, k) % len(pal)]
+            sky(img, top, bot)
             d = ImageDraw.Draw(img)
             for r in range(16):  # rayos
-                a = r * math.pi / 8 + t
+                a = r * math.pi / 8 + t * 1.5
                 d.polygon([(W/2, 1050), (W/2 + 2200*math.cos(a), 1050 + 2200*math.sin(a)),
-                           (W/2 + 2200*math.cos(a + .2), 1050 + 2200*math.sin(a + .2))], fill=(255, 240, 120))
-            z = 1.6 + .25 * hit
+                           (W/2 + 2200*math.cos(a + .2), 1050 + 2200*math.sin(a + .2))], fill=ray)
+            z = 1.6 + .35 * hit
             avatar(d, W/2, 1500 + 120 * (z - 1.6), 95 * z, CHARS["me"], T, 0, "out", "yell" if hit > .2 else "flat")
+            by = 1560 - (1 - hit) * 220
+            d.ellipse([W/2 + 260, by - 70, W/2 + 400, by + 70], fill=(240, 120, 30), outline=(40, 20, 10), width=6)
+            d.line([W/2 + 330, by - 70, W/2 + 330, by + 70], fill=(40, 20, 10), width=5)
         else:
             d = town(img, T)
             for row, (y, s, xs) in enumerate([(1250, 34, range(80, W, 160)), (1480, 50, range(40, W + 100, 230))]):
