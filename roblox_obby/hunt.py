@@ -14,6 +14,8 @@ from in_this_town import (W, H, SR, CHARS, npc, avatar, town, sky, block, sticke
 MIN_DUR = 60.0
 GY = 1450
 ME = CHARS["me"]
+SHOW = "THE HUNT"
+TICKER = "  LIVE · THE HUNT · 7 DAYS · $1,000,000 · TARGET: HUSS BOY · "
 PINK, PURPLE, NEON, GOLD = (255, 40, 200), (130, 40, 220), (255, 90, 230), (255, 215, 40)
 
 SCRIPT = [
@@ -96,8 +98,8 @@ def tv_overlay(img, T, day=None):
         d.text((W - 183, 210), day, font=font(40), fill=(255, 255, 255), anchor="mm")
     d.rectangle([0, 1700, W, 1770], fill=PURPLE)
     d.rectangle([0, 1700, 210, 1770], fill=PINK)
-    d.text((105, 1735), "THE HUNT", font=font(36), fill=(255, 255, 255), anchor="mm")
-    msg = "  LIVE · THE HUNT · 7 DAYS · $1,000,000 · TARGET: HUSS BOY · "
+    d.text((105, 1735), SHOW, font=font(36 if len(SHOW) <= 8 else 28), fill=(255, 255, 255), anchor="mm")
+    msg = TICKER
     x = 230 - (T * 160) % 1400
     while x < W:
         d.text((x, 1735), msg, font=font(34), fill=(255, 255, 255), anchor="lm")
