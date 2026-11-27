@@ -3,7 +3,18 @@
   "scene": "noche_electoral",
   "voice": {
     "id": "chatterbox:",
-    "speed": 1.15
+    "speed": 1.12,
+    "max_gap": 0.12,
+    "pause": 0.08,
+    "pause_section": 0.3,
+    "tag_exaggeration": {
+      "shouting": 1.35,
+      "excited": 1.1,
+      "laughs": 0.95,
+      "mischievously": 0.9,
+      "sarcastic": 0.85,
+      "exasperated": 1.05
+    }
   },
   "meter": {
     "label": "PAZ",

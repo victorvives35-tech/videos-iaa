@@ -153,7 +153,8 @@ def synth(text, out_wav, voice="piper:es_ES-davefx-medium", speed=1.0, opts=None
         "equalizer=f=220:t=q:w=1.2:g=1.5",
         "equalizer=f=3200:t=q:w=1.5:g=2.5",
         "equalizer=f=9000:t=h:w=2000:g=1.5",
-        "acompressor=threshold=-20dB:ratio=3:attack=5:release=80:makeup=2",
+        "deesser=i=0.4",
+        "acompressor=threshold=-22dB:ratio=3.5:attack=4:release=70:makeup=3",
     ])
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-af", filt, "-ar", "48000", "-ac", "1", str(out_wav)], check=True)
     raw.unlink(missing_ok=True)

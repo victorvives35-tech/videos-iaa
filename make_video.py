@@ -107,6 +107,30 @@ def chunk_words(words, max_words=3, max_chars=15):
 
 
 # ---------------------------------------------------------------- audio
+def tighten(a, max_gap=0.13, thr_db=-40):
+    """Acorta los silencios internos largos (comas, puntos suspensivos) a `max_gap` segundos."""
+    hop = int(0.01 * SR)
+    n = len(a) // hop
+    if n < 3:
+        return a
+    rms = np.sqrt(np.mean(a[: n * hop].reshape(n, hop) ** 2, axis=1) + 1e-12)
+    silent = 20 * np.log10(rms) < thr_db
+    out, i, keep = [], 0, int(max_gap / 0.01)
+    fade = np.linspace(1, 0, hop * 2)
+    while i < n:
+        j = i
+        while j < n and silent[j] == silent[i]:
+            j += 1
+        seg = a[i * hop: j * hop]
+        if silent[i] and 0 < i and j < n and (j - i) > keep:
+            half = keep * hop // 2
+            seg = np.concatenate([seg[:half], seg[-half:]])
+        out.append(seg)
+        i = j
+    out.append(a[n * hop:])
+    return np.concatenate(out).astype(np.float32)
+
+
 def env(n, a=0.002, d=0.2):
     t = np.arange(n) / SR
     return np.minimum(1, t / a) * np.exp(-t / d)
@@ -220,6 +244,13 @@ def build(script_path, voice_override=None, preview=False, workers=3, keep=False
                 opts["exaggeration"] = b["exaggeration"]
             tts.synth(say, wav, voice=voice, speed=b.get("speed", speed), opts=opts)
         audio, _ = sf.read(wav, dtype="float32")
+        gap = b.get("max_gap", vcfg.get("max_gap", 0.13))
+        tight = wav.with_suffix(f".t{int(gap * 1000)}.wav")
+        if gap and not tight.exists():
+            sf.write(tight, tighten(audio, gap), SR)
+        if gap:
+            wav = tight
+            audio, _ = sf.read(wav, dtype="float32")
         dur = len(audio) / SR
         times_cache = wav.with_suffix(".times.json")
         if times_cache.exists() and json.loads(times_cache.read_text())["n"] == len(words):
@@ -242,7 +273,9 @@ def build(script_path, voice_override=None, preview=False, workers=3, keep=False
         if is_summary:
             tb["hideSubs"] = b.get("hideSubs", True)
         timeline_beats.append(tb)
-        pause = b.get("pause", 0.22 if not re.search(r"[.!?…]$", b["text"].strip()) else 0.32)
+        nxt = beats[i + 1] if i + 1 < len(beats) else {}
+        section = "tip" in nxt or (nxt.get("card") or {}).get("type") == "summary"
+        pause = b.get("pause", vcfg.get("pause_section", 0.28) if section else vcfg.get("pause", 0.1))
         cursor += dur + pause
         print(f"  [{i + 1:02d}] {dur:4.1f}s  {say}", flush=True)
 
