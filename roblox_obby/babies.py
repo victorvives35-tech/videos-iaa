@@ -448,28 +448,43 @@ def mix_audio(segs, total, out_wav):
     ORIG_MIX(segs, total, out_wav)
     with wave.open(out_wav) as w:
         a = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
-    a = a.copy()
-    def put(x, t):
-        s = int(t * SR); e = min(len(a), s + len(x)); a[s:e] += x[:e - s] if e > s else 0
+    a = a.copy(); n = len(a)
+    loud = np.zeros(n, np.float32)   # llantos y sirena: chocan con la voz
+    hits = np.zeros(n, np.float32)   # golpes, pops...
+    def put(buf, x, t):
+        s_ = int(t * SR); e = min(n, s_ + len(x))
+        if e > s_: buf[s_:e] += x[:e - s_]
     for s in segs:
         st, du = s["start"], s["dur"]
         if s["scene"] == "morning":
-            put(cry(1.2, 560) * .8, 0.05)
-            put(m.riser(1.0), st + du * .7 - .9); put(m.sfx("boom") * .7, st + du * .95)
+            put(loud, cry(1.2, 560) * .8, 0.05)
+            put(hits, m.riser(1.0), st + du * .7 - .9); put(hits, m.sfx("boom") * .7, st + du * .95)
         if s["scene"] == "babies":
             for j, f0 in enumerate((480, 600, 540, 650)):
-                put(cry(1.0, f0, j) * .6, st + .2 + j * .45)
+                put(loud, cry(1.0, f0, j) * .6, st + .2 + j * .45)
         if s["scene"] == "babies2":
-            for j in range(3): put(m.sfx("pop") * .8, st + j * du / 3)
+            for j in range(3): put(hits, m.sfx("pop") * .8, st + j * du / 3)
         if s["scene"] == "chaos":
-            put(m.sfx("boing") * .6, st + .3); put(m.sfx("boing") * .6, st + 1.1)
+            put(hits, m.sfx("boing") * .6, st + .3); put(hits, m.sfx("boing") * .6, st + 1.1)
         if s["scene"] == "police":
             n_ = int(SR * 1.6); tt = np.arange(n_) / SR
-            put((np.sin(2 * np.pi * np.cumsum(700 + 250 * np.sign(np.sin(2 * np.pi * 2.5 * tt))) / SR) * .12).astype(np.float32), st)
+            put(loud, (np.sin(2 * np.pi * np.cumsum(700 + 250 * np.sign(np.sin(2 * np.pi * 2.5 * tt))) / SR) * .12).astype(np.float32), st)
         if s["scene"] == "press":
-            put(m.sfx("pop") * 1.2, st + du * .45); put(m.sfx("boom"), st + du * .5)
+            put(hits, m.sfx("pop") * 1.2, st + du * .45); put(hits, m.sfx("boom"), st + du * .5)
         if s["scene"] == "twist":
-            put(cry(1.4, 600) * .5, st + du * .85)
+            put(loud, cry(1.4, 600) * .5, st + du * .85)
+    # 1) quitar a los llantos la zona de frecuencias de la voz (700-3500 Hz, -14 dB)
+    X = np.fft.rfft(loud); f = np.fft.rfftfreq(n, 1 / SR)
+    X[(f > 700) & (f < 3500)] *= .2
+    loud = np.fft.irfft(X, n).astype(np.float32) * .7
+    # 2) ducking: cuando habla el narrador, llantos al 15 % y golpes al 50 %
+    voice = np.zeros(n, np.float32)
+    for s in segs:
+        put(voice, np.abs(s["audio"]), s["start"])
+    env = np.convolve(voice, np.ones(2205) / 2205, "same")
+    talk = np.clip(env * 25, 0, 1)
+    talk = np.convolve(talk, np.ones(4410) / 4410, "same")  # suavizado ~100 ms para que no "bombee"
+    a += loud * (1 - .85 * talk) + hits * (1 - .5 * talk)
     a /= max(1, np.abs(a).max() / .95)
     with wave.open(out_wav, "w") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
