@@ -16,14 +16,25 @@ SCRIPT = [
     ("In this town, every single kid gets a superpower on their tenth birthday!", "town", None),
     ("My best friend? Super speed!", "speed", None),
     ("My sister? She can fly!", "fly", None),
-    ("And me?! I got... the HUSS!", "me", "solo"),
+    ("My cousin? He can turn invisible!", "invisible", None),
+    ("And me?! I got... the HUSS!", "me", "solo", 6),
     ("Everyone laughed at me! Nobody knew what it did!", "laugh", None),
+    ("At school, they called me Huss Boy. Even my teacher laughed at me!", "school", None),
+    ("So I trained. Every single day. At the park, at the court, even in the shower!", "train", "solo", 3),
     ("Until one day... a giant monster attacked the town!", "monster", None),
+    ("It smashed the bakery! It stepped on the mailman! It ate the school bus!", "monster", None),
+    ("My best friend ran at it super fast... and got launched into space!", "friend_fail", None),
+    ("My sister flew at it... and got stuck in a tree!", "sister_fail", None),
     ("Everyone ran away! But I stood still... and I said:", "stand", None),
-    ("", "huss", "solo"),
+    ("", "huss", "solo", 6),
     ("The monster stopped... and started DANCING!", "dance", None),
-    ("And now, everyone in this town says:", "crowd", "crowd"),
-    ("Follow for part two!", "cta", None),
+    ("The mayor gave me a golden medal! I was a hero!", "medal", None),
+    ("And now, everyone in this town says:", "crowd", "crowd", 6),
+    ("But then... the ground started shaking. It was the monster's MOM!", "mom", None),
+    ("She was ten times bigger! So I took a deep breath... and said:", "mom", None),
+    ("", "huss", "solo", 6),
+    ("But she didn't even blink. She just... smiled.", "mom_smile", None),
+    ("Will the huss work on her? Follow for part two!", "cta", None),
 ]
 
 # ---------------------------------------------------------------- audio
@@ -44,15 +55,15 @@ def repitch(a, f):
     n = int(len(a) / f)
     return np.interp(np.arange(n) * f, np.arange(len(a)), a).astype(np.float32)
 
-HUSS_STEP = 0.30
+HUSS_STEP = 0.40
 
-def huss_chant(hclip, crowd):
-    n = int(SR * (HUSS_STEP * N_HUSS + .6))
+def huss_chant(hclip, crowd, nh):
+    n = int(SR * (HUSS_STEP * nh + .4))
     out = np.zeros(n, np.float32)
-    for k in range(N_HUSS):
+    for k in range(nh):
         s = int(k * HUSS_STEP * SR)
         voices = [(1.0, 0)] if not crowd else \
-            [(.82, 0), (.93, 350), (1.05, -200), (1.18, 500), (1.32, 150)]
+            [(1.0, 0), (.9, 120), (1.1, -90), (.8, 200), (1.2, 60)]
         for f, off in voices:
             c = repitch(hclip, f) * (1.0 if not crowd else .45)
             ss = max(0, s + off); e = min(n, ss + len(c))
@@ -88,10 +99,16 @@ def make_huss(voice, tmp):
     out[st:st + ss_n] += ss[: len(out) - st]
     return out / np.abs(out).max() * .9
 
+HIT_OFF = 0.1
+
 def build(voice, tmp):
+    global HIT_OFF
     hclip = make_huss(voice, tmp)
+    env_ = np.convolve(np.abs(hclip), np.ones(441) / 441, "same")
+    HIT_OFF = float(np.argmax(env_)) / SR
     segs, cur, gap = [], .25, .2
-    for i, (txt, scene, huss) in enumerate(SCRIPT):
+    for i, row in enumerate(SCRIPT):
+        txt, scene, huss = row[:3]; nh = row[3] if len(row) > 3 else 0
         audio = np.zeros(0, np.float32); words = []
         if txt:
             # narrador con energía: más rápido, algo más agudo, entonación más variada y con presencia
@@ -104,15 +121,36 @@ def build(voice, tmp):
         huss_t0 = None
         if huss:
             huss_t0 = cur + len(audio) / SR + (.6 if txt else 0)
-            chant = huss_chant(hclip, huss == "crowd")
+            chant = huss_chant(hclip, huss == "crowd", nh)
             pad = np.zeros(int((huss_t0 - cur) * SR) - len(audio), np.float32)
             audio = np.concatenate([audio, pad, chant])
-            words += [("HUSS", huss_t0 + k * HUSS_STEP, huss_t0 + (k + 1) * HUSS_STEP) for k in range(N_HUSS)]
-        reveal = next((a for w, a, b in words if w.strip(".,!?").upper() == "HUSS"), None)
+            # la palabra/golpe visual se alinea con el pico de voz de la muestra
+            words += [("HUSS!", huss_t0 + HIT_OFF - .03 + k * HUSS_STEP, huss_t0 + HIT_OFF - .03 + (k + 1) * HUSS_STEP)
+                      for k in range(nh)]
+        reveal = next((a for w, a, b in words[:len(txt.split())] if w.strip(".,!?").upper() == "HUSS"), None)
         segs.append(dict(text=txt, scene=scene, start=cur, dur=len(audio) / SR, audio=audio,
-                         words=words, huss_t0=huss_t0, huss=huss, reveal=reveal))
+                         words=words, huss_t0=huss_t0, huss=huss, reveal=reveal, nh=nh))
         cur += len(audio) / SR + gap
     return segs, cur + .5
+
+BG_LOOP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "bg_loop.wav")
+
+def bg_music(n):
+    """Fondo 'titititi' del video de referencia (separado de la voz), en bucle con fundido cruzado."""
+    if not os.path.exists(BG_LOOP):
+        return music(n)
+    with wave.open(BG_LOOP) as w:
+        a = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
+    a /= np.abs(a).max()
+    xf = int(SR * .25)
+    out = np.zeros(n + len(a), np.float32); pos = 0
+    ramp = np.linspace(0, 1, xf, dtype=np.float32)
+    while pos < n:
+        seg = a.copy()
+        seg[:xf] *= ramp; seg[-xf:] *= ramp[::-1]
+        out[pos:pos + len(a)] += seg
+        pos += len(a) - xf
+    return out[:n] * .6
 
 def riser(d):
     n = int(SR * d); t = np.arange(n) / SR
@@ -133,19 +171,22 @@ def mix_audio(segs, total, out_wav):
         if sc == "fly": put(fx, sfx("boing"), st + .2)
         if sc == "monster": put(fx, sfx("boom"), st + .4); put(fx, sfx("boom"), st + 1.2)
         if s["huss"]:
-            for k in range(N_HUSS):
-                put(fx, sfx("boom") * .3, s["huss_t0"] + k * HUSS_STEP)
+            pass
         if sc == "me" and s["reveal"]:
             put(fx, riser(1.2), max(0, s["reveal"] - 1.2)); put(fx, sfx("boom"), s["reveal"]); put(fx, sfx("ding") * .8, s["reveal"])
         if sc == "dance": put(fx, sfx("ding"), st + .8)
         if sc == "cta": put(fx, sfx("pop"), st)
-    m = music(n) * .5
+    m = bg_music(n) * .9
     envv = np.convolve(np.abs(voice), np.ones(4410) / 4410, "same")
-    m *= 1 - .5 * np.clip(envv * 12, 0, 1)
+    m *= 1 - .35 * np.clip(envv * 12, 0, 1)
+    for s in segs:
+        if s["huss"]:
+            a_ = int(s["huss_t0"] * SR); b_ = int((s["huss_t0"] + s["nh"] * HUSS_STEP + .3) * SR)
+            m[a_:b_] *= .7
     for s in segs:  # silencio antes del huss solo para dramatismo
         if s["scene"] == "stand":
             a = int((s["start"] + s["dur"] * .5) * SR); b = int((s["start"] + s["dur"] + .2) * SR)
-            m[a:b] *= .1
+            m[a:b] *= .6
     mix = voice + fx * .7 + m
     mix /= max(1, np.abs(mix).max() / .95)
     with wave.open(out_wav, "w") as w:
@@ -159,6 +200,10 @@ CHARS = {
     "friend": dict(head=(200, 150, 110), torso=(240, 60, 60), legs=(30, 30, 30), hair=(20, 20, 20), logo=(255, 230, 40)),
     "sister": dict(head=SKIN, torso=(255, 120, 200), legs=(140, 80, 200), hair=(230, 180, 60), logo=None, long_hair=True),
     "monster": dict(head=(120, 200, 60), torso=(70, 140, 40), legs=(50, 100, 30), hair=None, logo=None, angry=True),
+    "mom":     dict(head=(150, 220, 80), torso=(230, 90, 170), legs=(60, 110, 40), hair=(60, 30, 80), logo=None, angry=True, long_hair=True),
+    "cousin":  dict(head=SKIN, torso=(120, 120, 140), legs=(60, 60, 70), hair=(140, 80, 30), logo=None),
+    "teacher": dict(head=(200, 150, 110), torso=(110, 70, 50), legs=(60, 50, 40), hair=(180, 180, 180), logo=None),
+    "mayor":   dict(head=SKIN, torso=(20, 20, 20), legs=(20, 20, 20), hair=(80, 80, 80), logo=(200, 30, 30)),
 }
 def npc(i):
     r = random.Random(i)
@@ -255,6 +300,13 @@ def shake_img(img, amp):
     return Image.fromarray(np.roll(np.array(img), (random.randint(-amp, amp), random.randint(-amp, amp)), axis=(0, 1)))
 
 # ---------------------------------------------------------------- escenas
+def huss_hit(seg, T):
+    t0 = seg["huss_t0"] + HIT_OFF - .03
+    if T < t0: return -1, 0
+    k = int((T - t0) / HUSS_STEP)
+    beat = (T - t0) % HUSS_STEP
+    return k, (max(0, 1 - beat / .18) if k < seg["nh"] else 0)
+
 def render_scene(seg, t, T):
     sc = seg["scene"]; dur = seg["dur"] + .2; u = t / dur
     if sc == "me" and seg["huss_t0"] and T >= seg["huss_t0"] - .05:
@@ -387,9 +439,7 @@ def render_scene(seg, t, T):
         img.alpha_composite(dark)
 
     elif sc in ("huss", "crowd"):
-        k = int((T - seg["huss_t0"]) / HUSS_STEP) if T >= seg["huss_t0"] else -1
-        beat = (T - seg["huss_t0"]) % HUSS_STEP if k >= 0 else 1
-        hit = max(0, 1 - beat / .15) if 0 <= k < N_HUSS else 0
+        k, hit = huss_hit(seg, T)
         if sc == "huss":
             pal = [((255, 210, 40), (255, 90, 30), (255, 240, 120)), ((40, 160, 255), (20, 40, 160), (120, 210, 255)),
                    ((255, 60, 120), (130, 20, 90), (255, 150, 190)), ((130, 255, 90), (20, 130, 60), (210, 255, 160))]
@@ -415,13 +465,154 @@ def render_scene(seg, t, T):
             # el monstruo también
             avatar(d, 120, 1490 - 40 * hit, 70, CHARS["monster"], T, 0, "dance", "smile", look=1)
         random.seed(k * 7 + 3)
-        for j in range(max(0, min(k + 1, N_HUSS))):  # HUSS acumulados en pantalla
+        for j in range(max(0, min(k + 1, seg["nh"]))):  # HUSS acumulados en pantalla
             x = random.randint(250, W - 250); y = random.randint(260, 540)
             sc_ = 1 + (.35 * hit if j == k else 0)
             sticker(img, "HUSS", x, y, 110, random.choice([(255, 40, 90), (40, 160, 255), (130, 40, 220), (20, 20, 20)]),
                     rot=random.randint(-14, 14), scale=sc_)
         random.seed()
         amp = int(30 * hit)
+
+    elif sc == "invisible":
+        d = town(img, T)
+        alpha = max(0, 1 - ease(u / .7))
+        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        avatar(ImageDraw.Draw(layer), W/2, GY, 62, CHARS["cousin"], T, 0, "out", "smile")
+        layer.putalpha(Image.eval(layer.getchannel("A"), lambda v: int(v * (.08 + .92 * alpha))))
+        img.alpha_composite(layer)
+        if u > .5:
+            sticker(img, "INVISIBLE", W/2, 560, 130, (90, 90, 110), rot=-4, scale=1 + .04 * math.sin(t * 9))
+
+    elif sc == "school":
+        sky(img, (250, 240, 220), (230, 215, 190))
+        d = ImageDraw.Draw(img)
+        block(d, [90, 300, W - 90, 760], (40, 80, 60))  # pizarra
+        d.text((W/2, 450), "HUSS BOY", font=font(130), fill=(255, 255, 255), anchor="mm")
+        d.text((W/2, 610), "LOL", font=font(90), fill=(255, 220, 120), anchor="mm")
+        d.rectangle([0, 1450, W, H], fill=(170, 120, 80))
+        avatar(d, 170, 1450, 55, CHARS["teacher"], T, 0, "down", "laugh", look=1)
+        for i, x in enumerate([420, 640, 860]):
+            block(d, [x - 100, 1330, x + 100, 1380], (150, 100, 60))
+            avatar(d, x, 1450 + 6 * abs(math.sin(t * 10 + i)), 34, npc(40 + i), T, 0, "down", "laugh", look=-1)
+        avatar(d, 900, 1150, 40, CHARS["me"], T, 0, "down", "flat", look=-1)
+        if t > .6:
+            sticker(img, "HUSS BOY", W/2, 900, 110, (255, 220, 40), rot=6 + 3 * math.sin(t * 8))
+        if t > 1.6:
+            sticker(img, "HAHAHA", 260, 1050, 70, (255, 255, 255), fg=(255, 60, 90), rot=-8)
+
+    elif sc == "train":
+        k, hit = huss_hit(seg, T) if seg["huss_t0"] else (-1, 0)
+        pre = not seg["huss_t0"] or T < seg["huss_t0"]
+        part = min(2, int(3 * (T - seg["start"]) / max(.1, (seg["huss_t0"] or seg["start"] + dur) - seg["start"]))) if pre else 3
+        if part == 0:  # parque
+            town(img, T); d = ImageDraw.Draw(img)
+            d.rectangle([700, 900, 760, 1450], fill=(110, 70, 40)); d.ellipse([560, 650, 900, 980], fill=(60, 160, 60))
+            avatar(d, 380, 1450, 60, CHARS["me"], T, 0, "out", "yell" if int(t * 6) % 2 else "flat", look=1)
+            sticker(img, "DAY 1", W/2, 420, 110, (30, 30, 30), rot=-4)
+        elif part == 1:  # cancha
+            sky(img, (255, 170, 80), (255, 220, 150)); d = ImageDraw.Draw(img)
+            d.rectangle([0, 1400, W, H], fill=(60, 120, 200)); d.line([0, 1600, W, 1600], fill=(255, 255, 255), width=8)
+            d.rectangle([860, 600, 880, 1400], fill=(80, 80, 80)); block(d, [700, 520, 900, 660], (255, 255, 255))
+            d.rectangle([720, 680, 860, 690], fill=(240, 80, 30))
+            by = 1300 - abs(math.sin(T * 8)) * 250
+            avatar(d, 450, 1450, 62, CHARS["me"], T, 0, "out", "yell", look=1)
+            d.ellipse([600, by - 55, 710, by + 55], fill=(240, 120, 30), outline=(40, 20, 10), width=5)
+            sticker(img, "DAY 47", W/2, 420, 110, (30, 30, 30), rot=4)
+        elif part == 2:  # ducha
+            sky(img, (200, 235, 255), (150, 210, 240)); d = ImageDraw.Draw(img)
+            for yy in range(300, 1500, 90):
+                for xx in range(0, W, 90):
+                    d.rectangle([xx + 4, yy + 4, xx + 86, yy + 86], fill=(230, 245, 255))
+            d.rectangle([W/2 - 20, 300, W/2 + 20, 420], fill=(160, 160, 170)); d.ellipse([W/2 - 90, 400, W/2 + 90, 470], fill=(170, 170, 180))
+            rnd = random.Random(int(T * 20))
+            for _ in range(40):
+                x = W/2 + rnd.randint(-160, 160); y = rnd.randint(480, 1400)
+                d.line([x, y, x - 6, y + 40], fill=(90, 160, 255), width=6)
+            avatar(d, W/2, 1450, 62, CHARS["me"], T, 0, "up", "yell")
+            sticker(img, "DAY 365", W/2, 230, 100, (30, 30, 30), rot=-3)
+        else:  # los HUSS de entrenamiento
+            sky(img, (255, 210, 40), (255, 90, 30)); d = ImageDraw.Draw(img)
+            for r in range(16):
+                a = r * math.pi / 8 + t
+                d.polygon([(W/2, 1050), (W/2 + 2200*math.cos(a), 1050 + 2200*math.sin(a)),
+                           (W/2 + 2200*math.cos(a + .2), 1050 + 2200*math.sin(a + .2))], fill=(255, 240, 120))
+            z = 1.5 + .3 * hit
+            avatar(d, W/2, 1500 + 120 * (z - 1.5), 90 * z, CHARS["me"], T, 0, "out", "yell" if hit > .2 else "flat")
+            if k >= 0:
+                sticker(img, "HUSS!", W/2, 420, 150, (40, 90, 210), rot=-6 + 4 * k, scale=1 + .35 * hit)
+            amp = int(22 * hit)
+
+    elif sc == "friend_fail":
+        d = town(img, T, tint="night")
+        avatar(d, W/2 + 230, GY - 20, 150, CHARS["monster"], T * .4, 0, "out", "angry", look=-1)
+        if u < .45:
+            fx_ = -100 + (W/2 + 50) * ease(u / .45)
+            for k2 in range(10):
+                d.line([fx_ - 300, 1100 + k2 * 30, fx_ - 60, 1100 + k2 * 30], fill=(255, 255, 255), width=5)
+            avatar(d, fx_, GY, 55, CHARS["friend"], T * 2, 1.6, "out", "angry", look=1)
+        else:
+            v = (u - .45) / .55
+            fx_, fy = W/2 + 50 - 300 * v, GY - 1500 * v
+            avatar(d, fx_, fy, 55 * (1 - .7 * v), CHARS["friend"], T * 3, 0, "up", "shock")
+            if v > .6:
+                d.regular_polygon((W/2 - 160, 260, 40 + 20 * math.sin(T * 20)), 4, rotation=45, fill=(255, 255, 255))
+            sticker(img, "BYE BYE", W/2, 760, 120, (240, 60, 60), rot=5)
+            amp = int(15 * max(0, 1 - v * 3))
+
+    elif sc == "sister_fail":
+        d = town(img, T, tint="night")
+        avatar(d, W/2 + 260, GY - 20, 150, CHARS["monster"], T * .4, 0, "out", "angry", look=-1)
+        d.rectangle([230, 1000, 290, 1450], fill=(110, 70, 40)); d.ellipse([60, 650, 460, 1100], fill=(50, 140, 50))
+        if u < .45:
+            v = ease(u / .45)
+            avatar(d, 700 - 450 * v, 900 - 120 * math.sin(v * 3.14), 50, CHARS["sister"], T, 0, "up", "angry", look=-1)
+        else:
+            avatar(d, 260, 960 + 6 * math.sin(T * 20), 50, CHARS["sister"], T, 0, "up", "shock")
+            for k2 in range(5):
+                d.ellipse([120 + k2 * 70, 720 + (k2 % 2) * 60, 170 + k2 * 70, 770 + (k2 % 2) * 60], fill=(30, 110, 30))
+            sticker(img, "STUCK", 600, 600, 130, (40, 160, 60), rot=-6)
+
+    elif sc == "medal":
+        sky(img, (120, 200, 255), (255, 240, 200))
+        d = ImageDraw.Draw(img)
+        d.rectangle([0, 1450, W, H], fill=(200, 40, 40))
+        block(d, [150, 1250, W - 150, 1450], (230, 230, 240))  # escenario
+        mtop = avatar(d, 330, 1250, 58, CHARS["mayor"], T, 0, "out", "smile", look=1)
+        avatar(d, 700, 1250, 62, CHARS["me"], T, 0, "up", "smile", look=-1)
+        d.rectangle([330 - 60, mtop - 20, 330 + 60, mtop + 5], fill=(20, 20, 20))  # chistera alcalde
+        d.rectangle([330 - 38, mtop - 110, 330 + 38, mtop - 15], fill=(20, 20, 20))
+        if u > .3:
+            my = 900 + 15 * math.sin(T * 6)
+            d.line([660, 820, 700, my - 40], fill=(200, 30, 30), width=8); d.line([740, 820, 700, my - 40], fill=(200, 30, 30), width=8)
+            d.ellipse([650, my - 50, 750, my + 50], fill=(255, 210, 40), outline=(150, 100, 0), width=6)
+            d.text((700, my), "#1", font=font(40), fill=(150, 100, 0), anchor="mm")
+            rnd = random.Random(3)
+            for i in range(90):
+                x0 = rnd.uniform(0, W); sp = rnd.uniform(300, 700)
+                y = (rnd.uniform(-H, 0) + t * sp) % (H + 100) - 50
+                d.rectangle([x0, y, x0 + 18, y + 30], fill=rnd.choice([(255, 60, 90), (60, 200, 255), (255, 220, 40), (120, 255, 120)]))
+            sticker(img, "HERO", W/2, 450, 160, (255, 210, 40), rot=-5, scale=1 + .05 * math.sin(t * 9))
+
+    elif sc == "mom_smile":
+        d = town(img, T, tint="night")
+        z = 1 + .4 * ease(u)
+        avatar(d, W/2, GY + 500 * (z - 1), 200 * z, CHARS["mom"], T * .3, 0, "out", "smile" if u > .5 else "flat")
+        avatar(d, 150, GY, 45, CHARS["me"], T, 0, "down", "shock", look=1)
+        if u > .5:
+            sticker(img, "UH OH...", W/2, 380, 130, (0, 0, 0), fg=(255, 255, 255), rot=5)
+        amp = 4
+
+    elif sc == "mom":
+        d = town(img, T, tint="night")
+        mz = 200 * (ease(min(1, u / .6)) if "ground" in seg["text"] else 1)
+        if mz > 10:
+            avatar(d, W/2, GY + 40, mz, CHARS["mom"], T * .3, 0, "out", "angry")
+        avatar(d, 150, GY, 45, CHARS["me"], T, 0, "up", "shock", look=1)
+        avatar(d, 950, GY, 70, CHARS["monster"], T, 0, "up", "shock", look=-1)
+        amp = int(14 + 10 * math.sin(t * 20))
+        if u > .6:
+            sticker(img, "MONSTER'S MOM", W/2, 380, 100, (0, 0, 0), fg=(255, 90, 170), rot=-4)
+            img.alpha_composite(Image.new("RGBA", (W, H), (255, 0, 80, int(40 + 30 * math.sin(t * 12)))))
 
     elif sc == "dance":
         d = town(img, T, tint="night")
