@@ -30,6 +30,7 @@ SCRIPT = [
     ("", "huss", "solo", 6),
     ("Everything came back down... and the ball started glowing!", "land", None),
     ("Now I'm the official guardian of the Huss Ball!", "guardian", None),
+    ("The baker made me a golden cake! And the mailman flew me home!", "baker_gold", None),
     ("And everyone in this town says:", "crowd", "crowd", 6),
     ("But tonight... someone is coming to steal it.", "thief", None),
     ("Who is it? Follow for part two!", "cta2", None),

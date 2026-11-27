@@ -55,20 +55,44 @@ def repitch(a, f):
     n = int(len(a) / f)
     return np.interp(np.arange(n) * f, np.arange(len(a)), a).astype(np.float32)
 
-HUSS_STEP = 0.40
+HUSS6 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "huss6.wav")
+HUSS_SEQ, HUSS_HITS = None, None  # secuencia original "HUSS HUSS HUSS, HUSS HUSS HUSS" y sus golpes (s)
 
-def huss_chant(hclip, crowd, nh):
-    n = int(SR * (HUSS_STEP * nh + .4))
-    out = np.zeros(n, np.float32)
-    for k in range(nh):
-        s = int(k * HUSS_STEP * SR)
-        voices = [(1.0, 0)] if not crowd else \
-            [(1.0, 0), (.9, 120), (1.1, -90), (.8, 200), (1.2, 60)]
-        for f, off in voices:
-            c = repitch(hclip, f) * (1.0 if not crowd else .45)
-            ss = max(0, s + off); e = min(n, ss + len(c))
-            out[ss:e] += c[:e - ss]
-    return out
+def load_huss_seq():
+    global HUSS_SEQ, HUSS_HITS
+    with wave.open(HUSS6) as w:
+        a = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
+    a /= np.abs(a).max() / .9
+    e = np.convolve(np.abs(a), np.ones(220) / 220, "same")
+    hits, i = [], 0
+    while i < len(e):  # inicio de cada HUSS = cruce de umbral, separados al menos 0.12 s
+        if e[i] > .45 * e.max():
+            seg = e[i:i + int(.05 * SR)]; hits.append((i + int(np.argmax(seg))) / SR); i += int(.15 * SR)
+        else:
+            i += 1
+    HUSS_SEQ, HUSS_HITS = a, hits[:6]
+
+def chant_cut(nh):
+    """Recorta la secuencia original a los primeros nh HUSS (1, 3 o 6)."""
+    if nh >= len(HUSS_HITS):
+        return HUSS_SEQ.copy(), list(HUSS_HITS)
+    end = int((HUSS_HITS[nh] - .04) * SR)
+    c = HUSS_SEQ[:end].copy(); f = min(len(c), int(.02 * SR)); c[-f:] *= np.linspace(1, 0, f)
+    return c, HUSS_HITS[:nh]
+
+def huss_chant(crowd, nh):
+    if nh > len(HUSS_HITS):  # más de 6: encadena secuencias
+        a, h = huss_chant(crowd, len(HUSS_HITS)); b, h2 = huss_chant(crowd, nh - len(HUSS_HITS))
+        off = len(a) / SR + .1
+        return np.concatenate([a, np.zeros(int(.1 * SR), np.float32), b]), h + [x + off for x in h2]
+    c, hits = chant_cut(nh)
+    if not crowd:
+        return np.concatenate([c, np.zeros(int(.3 * SR), np.float32)]), hits
+    out = np.zeros(len(c) + int(.5 * SR), np.float32)
+    for f, off in [(1.0, 0), (.93, 90), (1.07, -60), (.86, 150), (1.14, 40)]:
+        v = repitch(c, f) * (.5 if f != 1.0 else .8)
+        st = max(0, int(off)); e = min(len(out), st + len(v)); out[st:e] += v[:e - st]
+    return out, hits
 
 def bandnoise(n, lo, hi):
     x = np.random.randn(n)
@@ -99,13 +123,12 @@ def make_huss(voice, tmp):
     out[st:st + ss_n] += ss[: len(out) - st]
     return out / np.abs(out).max() * .9
 
-HIT_OFF = 0.1
+HIT_OFF = 0.04
 
 def build(voice, tmp):
     global HIT_OFF
-    hclip = make_huss(voice, tmp)
-    env_ = np.convolve(np.abs(hclip), np.ones(441) / 441, "same")
-    HIT_OFF = float(np.argmax(env_)) / SR
+    load_huss_seq()
+    HIT_OFF = HUSS_HITS[0]
     segs, cur, gap = [], .25, .2
     for i, row in enumerate(SCRIPT):
         txt, scene, huss = row[:3]; nh = row[3] if len(row) > 3 else 0
@@ -118,18 +141,19 @@ def build(voice, tmp):
             tot, acc, d = sum(wts), 0, len(audio) / SR
             for w, wt in zip(ws, wts):
                 words.append((w, cur + d * acc / tot, cur + d * (acc + wt) / tot)); acc += wt
-        huss_t0 = None
+        huss_t0 = None; hits = []
         if huss:
             huss_t0 = cur + len(audio) / SR + (.6 if txt else 0)
-            chant = huss_chant(hclip, huss == "crowd", nh)
+            chant, hits_rel = huss_chant(huss == "crowd", nh)
+            hits = [huss_t0 + h for h in hits_rel]
             pad = np.zeros(int((huss_t0 - cur) * SR) - len(audio), np.float32)
             audio = np.concatenate([audio, pad, chant])
             # la palabra/golpe visual se alinea con el pico de voz de la muestra
-            words += [("HUSS!", huss_t0 + HIT_OFF - .03 + k * HUSS_STEP, huss_t0 + HIT_OFF - .03 + (k + 1) * HUSS_STEP)
-                      for k in range(nh)]
+            words += [("HUSS!", h - .02, (hits[k + 1] if k + 1 < len(hits) else h + .3) - .02)
+                      for k, h in enumerate(hits)]
         reveal = next((a for w, a, b in words[:len(txt.split())] if w.strip(".,!?").upper() == "HUSS"), None)
         segs.append(dict(text=txt, scene=scene, start=cur, dur=len(audio) / SR, audio=audio,
-                         words=words, huss_t0=huss_t0, huss=huss, reveal=reveal, nh=nh))
+                         words=words, huss_t0=huss_t0, huss=huss, reveal=reveal, nh=nh, hits=hits))
         cur += len(audio) / SR + gap
     return segs, cur + .5
 
@@ -181,7 +205,7 @@ def mix_audio(segs, total, out_wav):
     m *= 1 - .35 * np.clip(envv * 12, 0, 1)
     for s in segs:
         if s["huss"]:
-            a_ = int(s["huss_t0"] * SR); b_ = int((s["huss_t0"] + s["nh"] * HUSS_STEP + .3) * SR)
+            a_ = int(s["huss_t0"] * SR); b_ = int((s["hits"][-1] + .4) * SR)
             m[a_:b_] *= .7
     for s in segs:  # silencio antes del huss solo para dramatismo
         if s["scene"] == "stand":
@@ -301,11 +325,11 @@ def shake_img(img, amp):
 
 # ---------------------------------------------------------------- escenas
 def huss_hit(seg, T):
-    t0 = seg["huss_t0"] + HIT_OFF - .03
-    if T < t0: return -1, 0
-    k = int((T - t0) / HUSS_STEP)
-    beat = (T - t0) % HUSS_STEP
-    return k, (max(0, 1 - beat / .18) if k < seg["nh"] else 0)
+    """(índice del último HUSS que ha sonado, intensidad del golpe 0..1) sincronizado con el audio real."""
+    hits = seg.get("hits") or []
+    if not hits or T < hits[0] - .02: return -1, 0
+    k = max(i for i, h in enumerate(hits) if T >= h - .02)
+    return k, max(0, 1 - (T - hits[k] + .02) / .16)
 
 def render_scene(seg, t, T):
     sc = seg["scene"]; dur = seg["dur"] + .2; u = t / dur
