@@ -306,7 +306,8 @@ def build_city(seed=3):
             if not busy:
                 w, d, h = rnd.uniform(6, 8), rnd.uniform(6.5, 8.5), rnd.uniform(4, 6.5)
                 house(side * (14 + w / 2), y + rnd.uniform(-1, 1), w, d, h, rnd.choice(HOUSE_COLS), face=-side, seed=i * 2 + (side > 0))
-            if (i + (side > 0)) % 2 == 0: palm(side * 10.8, y + 4.5, rnd.uniform(.95, 1.15), seed=i * 2 + (side > 0) + 100)
+            if side < 0 and 10 < y + 4.5 < 54: pass  # fachadas de tiendas y banco despejadas
+            elif (i + (side > 0)) % 2 == 0: palm(side * 10.8, y + 4.5, rnd.uniform(.95, 1.15), seed=i * 2 + (side > 0) + 100)
             else: tree(side * 10.8, y + 4.5, rnd.uniform(.9, 1.1), seed=i * 2 + (side > 0) + 100)
             if i % 2 == 0: lamp(side * 6.0, y - 2)
         y += 11; i += 1
