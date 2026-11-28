@@ -215,7 +215,7 @@ def render_section(sec):
 
 
 if __name__ == "__main__":
-    pl = plan()
+    pl = json.load(open(os.path.join(WORK, "plan.json"))) if os.environ.get("USE_PLAN") else plan()
     n = sum(len(s["shots"]) for s in pl)
     kinds = {}
     for s in pl:
