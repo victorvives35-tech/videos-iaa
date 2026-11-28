@@ -1118,7 +1118,7 @@ class MapScene(Scene):
         cxm = lerp(S / 2, cxm, 0.55); cym = lerp(S / 2, cym, 0.55)
         vw, vh = W / z * 1.35, H / z * 1.35
         box = (cxm - vw / 2, cym - vh / 2, cxm + vw / 2, cym + vh / 2)
-        img = self.map.resize((W, H), Image.BILINEAR, box=box)
+        img = self.map.transform((W, H), Image.EXTENT, box, Image.BILINEAR, fillcolor=(6, 14, 30))
         d = ImageDraw.Draw(img)
         L = Lights()
         sx_ = W / vw
