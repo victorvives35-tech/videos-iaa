@@ -2,7 +2,7 @@
 # Montaje final: concatena planos, escala a 1080p, etalonaje, subtítulos ASS y mezcla de audio.
 set -euo pipefail
 : "${WORK:?define WORK}"
-OUT="${OUT:-$(dirname "$0")/../output/GTA6_20_detalles.mp4}"
+OUT="${OUT:-$(cd "$(dirname "$0")/.." && pwd)/output/GTA6_20_detalles.mp4}"
 mkdir -p "$(dirname "$OUT")"
 cd "$WORK"
 ffmpeg -v error -stats -y -f concat -safe 0 -i concat.txt -i mezcla.wav -filter_complex \
