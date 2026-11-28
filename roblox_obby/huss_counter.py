@@ -114,7 +114,7 @@ def render():
                 arms="panic" if panic else "down", walk=1.0 if not panic else 1.6, t=T * (1 if not panic else 1.8) + i,
                 counter=val, crgb=(245, 245, 245) if not panic else (255, 120, 100))
 
-    def sky_day(): w.set_sky(env, (40, 110, 225), (175, 215, 250), (1, .95, .88), 4.5, 1.0); w.set_night(0)
+    def sky_day(): w.set_sky(env, (25, 130, 255), (160, 225, 255), (1, .95, .88), 5.0, 1.0); w.set_night(0)
     def sky_dusk(k=1.0):
         top = lerp((40, 110, 225), (45, 30, 110), k); bot = lerp((175, 215, 250), (245, 140, 120), k)
         w.set_sky(env, top, bot, lerp((1, .95, .88), (1, .55, .35), k), 4.5 - 2.6 * k, 1.0 - .4 * k); w.set_night(k)
@@ -264,9 +264,9 @@ def render():
         elif sc == "gift":
             w.look_at(cam, (5.5, 4, 5), (0, 11, 5))
             gx = 5 - 3.6 * ease(min(1, u / .6))
-            put("me", (-0.6, 11), yaw=-70, face="sad" if u < .6 else "shock", t=T,
+            put("me", (-0.6, 11), yaw=70, face="sad" if u < .6 else "shock", t=T,
                 counter=0 if u < .6 else int(9000000 * ease((u - .6) / .4)), crgb=(255, 70, 60) if u < .6 else (255, 205, 60))
-            put("gran", (gx, 11), yaw=90, face="smile", walk=1 if u < .6 else 0, t=T,
+            put("gran", (gx, 11), yaw=-90, face="smile", walk=1 if u < .6 else 0, t=T,
                 counter=9000000 if u < .6 else int(9000000 * (1 - ease((u - .6) / .4))), crgb=(255, 205, 60))
         elif sc == "never":
             w.look_at(cam, (-0.5, 5.5, 4.4), (-0.5, 11, 5.3))

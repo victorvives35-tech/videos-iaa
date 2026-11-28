@@ -166,32 +166,151 @@ def clock_tower(y):
     glow = box("towerwin", (1.2, .06, 2.2), (x, y - 2.53, 3.0), (255, 200, 120), .02, emit=2.5)
     return dict(face=face, hour=hh, minute=mh, glow=glow)
 
+def palm(x, y, s=1.0, seed=0):
+    rnd = random.Random(seed)
+    lean = rnd.uniform(-.35, .35)
+    for q in range(7):  # tronco curvado por segmentos
+        z = .5 + q * .95 * s
+        box(f"ptr{seed}_{q}", (.55 * s, .55 * s, 1.0 * s), (x + lean * (q / 7) ** 2 * 3, y, z), (150, 105, 60) if q % 2 else (130, 90, 50), .08)
+    tx, tz = x + lean * 3, .5 + 7 * .95 * s
+    leaves = []
+    for k in range(7):
+        ang = k * 2 * math.pi / 7 + rnd.uniform(-.2, .2)
+        o = box(f"frond{seed}_{k}", (3.4 * s, .9 * s, .14), (0, 0, 0), (60, 170, 70), .05, origin=(-1.7 * s, 0, 0))
+        o.location = (tx, y, tz)
+        o.rotation_euler = (0, math.radians(28), ang)
+        leaves.append(o)
+    box(f"coco{seed}", (.6 * s, .6 * s, .5 * s), (tx, y, tz - .3), (110, 80, 40), .2)
+    TREES.append(leaves)
+
+def mountains(L):
+    rnd = random.Random(9)
+    for q in range(14):
+        x = -110 + q * 17 + rnd.uniform(-5, 5); y = L + 70 + rnd.uniform(0, 50)
+        r = rnd.uniform(20, 34); hgt = rnd.uniform(22, 42)
+        bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=r, depth=hgt, location=(x, y, hgt / 2 - 1))
+        o = bpy.context.object; o.rotation_euler[2] = rnd.uniform(0, 1)
+        o.data.materials.append(mat(rnd.choice([(70, 165, 80), (60, 150, 75), (85, 180, 90)]), .9))
+    for q in range(10):  # colinas laterales
+        for side in (-1, 1):
+            bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=24, depth=rnd.uniform(14, 24), location=(side * 75, q * 22 - 10, 6))
+            bpy.context.object.data.materials.append(mat((75, 170, 85), .9))
+
+def bank(x, y, face):
+    W_, D_ = 16, 13
+    for q in range(3):  # escalinata
+        box(f"bstep{q}", (W_ + 2 - q * .7, D_ + 2 - q * .7, .4), (x, y, .2 + q * .4), (245, 245, 240), .03)
+    box("bankbody", (W_ - 2, D_ - 4, 9), (x - face * 1.5, y, 5.7), (250, 248, 235), .05)
+    fx = x + face * (W_ / 2 - 2)
+    for q in range(6):  # columnas
+        bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=.55, depth=8, location=(fx, y - D_ / 2 + 1.5 + q * (D_ - 3) / 5, 5.2))
+        bpy.context.object.data.materials.append(mat((250, 250, 245), .4))
+    box("bankroof", (W_, D_, 1.0), (x, y, 9.7), (245, 240, 220), .05)
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=D_ * .55, depth=2.6, location=(fx - face * .3, y, 11.4), rotation=(0, math.radians(90), 0))
+    o = bpy.context.object; o.scale = (1, 1, .35); o.data.materials.append(mat((245, 240, 220), .4))
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=3.2, location=(x - face * 1.5, y, 10.3), segments=24, ring_count=12)
+    dome = bpy.context.object; dome.data.materials.append(mat((255, 200, 60), .2))
+    box("bankspike", (.3, .3, 2.6), (x - face * 1.5, y, 14.6), (255, 200, 60), .05, rough=.2)
+    t = text("banksign", "HUSS BANK", 1.4, (255, 190, 40), (fx + face * .6, y, 9.7), extrude=.1)
+    t.rotation_euler = (math.radians(90), 0, math.radians(90 * face))
+    # tablón de cuentas
+    box("board", (.2, 5, 3), (fx + face * .4, y, 3.4), (25, 30, 45), .05)
+    for q, (nm, v) in enumerate([("HUSS", "$1,000,000"), ("LIKE", "$6,240"), ("BRO", "$4,880"), ("WOW", "$990")]):
+        tt = text(f"brd{q}", f"{nm}  {v}", .38, (255, 215, 80), (fx + face * .52, y, 4.4 - q * .6), extrude=.01, emit=1.5)
+        tt.rotation_euler = (math.radians(90), 0, math.radians(90 * face))
+
+def shop(x, y, w, face, rgb, label, seed):
+    box(f"shop{seed}", (w, 8, 5.2), (x, y, 2.6), (250, 250, 250), .05)
+    fx = x + face * (w / 2 + .02)
+    box(f"glass{seed}", (.08, 6.2, 2.8), (fx, y, 1.9), (150, 215, 245), .02, rough=.05)
+    for q in range(8):  # toldo de rayas
+        box(f"awn{seed}_{q}", (1.6, .8, .2), (fx + face * .8, y - 3.2 + q * .8 + .4, 3.7), rgb if q % 2 else (255, 255, 255), .03)
+    box(f"signb{seed}", (.15, 6.5, 1.3), (fx + face * .05, y, 4.6), rgb, .05)
+    t = text(f"sign{seed}", label, 1.0, (255, 255, 255), (fx + face * .16, y, 4.6), extrude=.05)
+    t.rotation_euler = (math.radians(90), 0, math.radians(90 * face))
+    rnd = random.Random(seed)
+    for q in range(10):  # productos de colores tras el cristal
+        box(f"prod{seed}_{q}", (.3, .45, .5), (fx - face * .3, y - 2.7 + q * .6, 1.2 + (q % 2) * .9), rnd.choice(HOUSE_COLS), .05)
+
+def court(x, y, face):
+    box("courtfloor", (14, 20, .1), (x, y, .05), (60, 130, 220), 0, rough=.4)
+    box("courtkey", (5, 6, .11), (x, y + 7, .06), (245, 175, 60), 0, rough=.4)
+    for (sx, sy, lx, ly) in [(14, .15, 0, 0), (14, .15, 0, 10), (14, .15, 0, -10), (.15, 20, 7, 0), (.15, 20, -7, 0)]:
+        box(f"cl{sx}{sy}{lx}{ly}", (sx, sy, .12), (x + lx, y + ly, .07), (255, 255, 255), 0)
+    box("hoop_pole", (.4, .4, 7), (x, y + 10.5, 3.5), (60, 60, 70), .05)
+    box("backboard", (3.6, .15, 2.2), (x, y + 9.9, 7), (255, 255, 255), .05)
+    bpy.ops.mesh.primitive_torus_add(major_radius=.7, minor_radius=.07, location=(x, y + 9.2, 6.2))
+    bpy.context.object.data.materials.append(mat((240, 110, 30), .4))
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=.6, location=(x - 2, y + 2, .6))
+    bpy.context.object.data.materials.append(mat((240, 120, 40), .6))
+    for q in range(3):  # gradas
+        box(f"bleach{q}", (1.0, 10, .6 + q * .6), (x + face * -(8 + q), y, .3 + q * .3), (200, 200, 210), .03)
+
+def pool(x, y):
+    box("poolrim", (12, 9, .4), (x, y, .2), (245, 245, 245), .05)
+    box("poolwater", (11, 8, .42), (x, y, .22), (60, 190, 240), 0, rough=.05)
+    for q, col in enumerate([(255, 90, 120), (255, 210, 60), (90, 220, 140)]):
+        bpy.ops.mesh.primitive_torus_add(major_radius=.9, minor_radius=.3, location=(x - 3 + q * 3, y + (q % 2) * 2 - 1, .55))
+        bpy.context.object.data.materials.append(mat(col, .3))
+    for q in range(2):  # sombrillas
+        box(f"umb_p{q}", (.15, .15, 3), (x - 7 + q * 14, y + 3, 1.5), (240, 240, 240), .02)
+        bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=2.2, depth=1, location=(x - 7 + q * 14, y + 3, 3.2))
+        bpy.context.object.data.materials.append(mat([(255, 80, 120), (60, 180, 250)][q], .5))
+
+def string_lights(y, z=9.8, width=11.6):
+    cols = [(255, 90, 90), (255, 220, 80), (90, 220, 140), (90, 170, 255), (240, 120, 255)]
+    n = 16
+    for q in range(n + 1):
+        x = -width / 2 + q * width / n
+        sag = .7 * (1 - (2 * q / n - 1) ** 2)
+        b = box(f"sl{y}_{q}", (.28, .28, .34), (x, y, z - sag), cols[q % 5], .1, emit=4.0)
+    for q in range(n):  # banderines
+        x = -width / 2 + (q + .5) * width / n
+        sag = .7 * (1 - (2 * (q + .5) / n - 1) ** 2)
+        bpy.ops.mesh.primitive_cone_add(vertices=3, radius1=.22, depth=.02, location=(x, y + .3, z - sag - .3), rotation=(math.radians(90), math.radians(180), 0))
+        bpy.context.object.data.materials.append(mat(cols[(q + 2) % 5], .6))
+
+def crosswalk(y):
+    for q in range(6):
+        box(f"cw{y}_{q}", (1.0, 3.2, .03), (-4 + q * 1.6, y, .05), (250, 250, 250), 0)
+
 def build_city(seed=3):
     TREES.clear(); WINDOWS.clear(); LAMPS.clear()
     rnd = random.Random(seed)
     L = 150
-    # suelo: hierba, aceras, bordillos, carretera, líneas
-    box("grass", (120, L + 60, .2), (0, L / 2 - 10, -.1), (110, 185, 90), 0, rough=.95)
-    box("road", (10, L + 40, .22), (0, L / 2 - 10, -.08), (70, 72, 80), 0, rough=.9)
+    box("grass", (200, L + 120, .2), (0, L / 2 + 10, -.1), (105, 195, 85), 0, rough=.95)
+    box("road", (11, L + 40, .22), (0, L / 2 - 10, -.08), (75, 80, 95), 0, rough=.85)
     for side in (-1, 1):
-        box(f"walk{side}", (4.5, L + 40, .35), (side * 7.25, L / 2 - 10, 0), (215, 215, 220), 0, rough=.9)
-        box(f"curb{side}", (.35, L + 40, .42), (side * 5.0, L / 2 - 10, 0), (190, 190, 195), .03)
+        box(f"walk{side}", (4.5, L + 40, .35), (side * 7.75, L / 2 - 10, 0), (232, 232, 238), 0, rough=.8)
+        box(f"curb{side}", (.35, L + 40, .42), (side * 5.5, L / 2 - 10, 0), (205, 205, 210), .03)
         for q in range(int((L + 40) / 3)):
-            box(f"tile{side}_{q}", (4.45, .06, .02), (side * 7.25, -25 + q * 3, .18), (195, 195, 200), 0)
+            box(f"tile{side}_{q}", (4.45, .06, .02), (side * 7.75, -25 + q * 3, .18), (210, 210, 218), 0)
     for q in range(int((L + 40) / 6)):
-        box(f"dash{q}", (.25, 2.2, .02), (0, -25 + q * 6, .04), (250, 220, 90), 0)
-    # casas, árboles, farolas
-    y = -20
-    i = 0
+        box(f"dash{q}", (.25, 2.2, .02), (0, -25 + q * 6, .04), (255, 215, 70), 0)
+    crosswalk(5); crosswalk(48)
+    mountains(L)
+    # hitos del pueblo (zona que más sale en cámara)
+    shop(-14.5, 16, 7, 1, (255, 90, 120), "PIZZA", 1)
+    shop(-14.5, 25, 7, 1, (90, 170, 255), "ARCADE", 2)
+    bank(-21, 42, 1)
+    court(19, 22, -1)
+    pool(18, 44)
+    shop(14.5, 60, 7, -1, (255, 190, 40), "CANDY", 3)
+    for y in (12, 30, 52):
+        string_lights(y)
+    # casas en el resto
+    y = -20; i = 0
     while y < L - 20:
         for side in (-1, 1):
-            w, d, h = rnd.uniform(6, 8), rnd.uniform(6.5, 8.5), rnd.uniform(4, 6.5)
-            house(side * (14 + w / 2), y + rnd.uniform(-1, 1), w, d, h, rnd.choice(HOUSE_COLS), face=-side, seed=i * 2 + (side > 0))
-            tree(side * 10.5, y + 4.5, rnd.uniform(.9, 1.15), seed=i * 2 + (side > 0) + 100)
-            if i % 2 == 0: lamp(side * 5.6, y - 2)
+            busy = (side < 0 and 10 < y < 52) or (side > 0 and 10 < y < 66)
+            if not busy:
+                w, d, h = rnd.uniform(6, 8), rnd.uniform(6.5, 8.5), rnd.uniform(4, 6.5)
+                house(side * (14 + w / 2), y + rnd.uniform(-1, 1), w, d, h, rnd.choice(HOUSE_COLS), face=-side, seed=i * 2 + (side > 0))
+            if (i + (side > 0)) % 2 == 0: palm(side * 10.8, y + 4.5, rnd.uniform(.95, 1.15), seed=i * 2 + (side > 0) + 100)
+            else: tree(side * 10.8, y + 4.5, rnd.uniform(.9, 1.1), seed=i * 2 + (side > 0) + 100)
+            if i % 2 == 0: lamp(side * 6.0, y - 2)
         y += 11; i += 1
     tower = clock_tower(L - 5)
-    # pueblo de fondo: bloques lejanos
     for q in range(16):
         box(f"far{q}", (6, 6, rnd.uniform(4, 9)), (rnd.uniform(-60, 60), L + 20 + rnd.uniform(0, 30), 3), rnd.choice(HOUSE_COLS), .1)
     return tower
