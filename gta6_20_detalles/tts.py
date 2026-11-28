@@ -7,8 +7,26 @@ from guion import SECCIONES, PRONUNCIACION
 
 WORK = os.environ["WORK"]
 MODEL = os.path.join(WORK, "voice", "es_ES-davefx-medium.onnx")
-OUT = os.path.join(WORK, "tts"); os.makedirs(OUT, exist_ok=True)
-SR = 22050
+OUT = os.path.join(WORK, "tts_" + os.environ.get("TTS_ENGINE", "kokoro")); os.makedirs(OUT, exist_ok=True)
+ENGINE = os.environ.get("TTS_ENGINE", "kokoro")
+SR = 24000 if ENGINE == "kokoro" else 22050
+_k = None
+
+
+def synth(text, path):
+    global _k
+    if ENGINE == "kokoro":
+        import soundfile as sf
+        from kokoro_onnx import Kokoro
+        if _k is None:
+            kd = os.path.join(WORK, "kokoro")
+            _k = Kokoro(os.path.join(kd, "kokoro-v1.0.onnx"), os.path.join(kd, "voices-v1.0.bin"))
+        a, sr = _k.create(text, voice=os.environ.get("TTS_VOICE", "em_alex"), speed=0.93, lang="es")
+        sf.write(path, a, sr, subtype="PCM_16")
+    else:
+        subprocess.run([sys.executable, "-m", "piper", "-m", MODEL, "-f", path,
+                        "--length-scale", "1.2", "--sentence-silence", "0.0"],
+                       input=text.encode(), check=True, capture_output=True)
 GAP = 0.5          # silencio entre frases
 SECTION_GAP = 1.6   # silencio entre secciones (whoosh + tarjeta)
 INTRO_LEAD = 2.2    # música sola al inicio
@@ -29,9 +47,7 @@ for si, sec in enumerate(SECCIONES):
     for fi, (tag, txt) in enumerate(sec["frases"]):
         p = os.path.join(OUT, f"{sec['id']}_{fi:02d}.wav")
         if not os.path.exists(p):
-            subprocess.run([sys.executable, "-m", "piper", "-m", MODEL, "-f", p,
-                            "--length-scale", "1.2", "--sentence-silence", "0.0"],
-                           input=voz(txt).encode(), check=True, capture_output=True)
+            synth(voz(txt), p)
         a = read_wav(p)
         # recorta silencios de los extremos
         nz = np.where(np.abs(a) > 0.01)[0]
